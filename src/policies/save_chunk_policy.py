@@ -7,6 +7,9 @@ from transformers import AutoTokenizer
 from src.datasets.dataset import Session
 
 
+SEARCH_PREFIX = "search_document: "
+
+
 class SaveChunkPolicy(ABC):
     @abstractmethod
     def apply(self, session_history: list[Session]) -> list[str]:
@@ -38,7 +41,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
 
     @staticmethod
     def _get_metadata_header(session: Session) -> str:
-        return f"Session_ID: {session.session_id}\nDate: {session.date}\n---\n"
+        return f"{SEARCH_PREFIX}Session_ID: {session.session_id}\nDate: {session.date}\n---\n"
 
     def _split_messages_by_tokens(self, session: Session) -> list[dict]:
         """Split messages that exceed the max token budget for a single chunk."""

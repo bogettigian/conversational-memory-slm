@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from src.datasets.dataset import LongMemEvalInstance
 
 
+QUERY_PREFIX = "search_query: "
+
 class QuestionChunkPolicy(ABC):
     @abstractmethod
     def apply(self, dataset_instance: LongMemEvalInstance) -> str:
@@ -14,4 +16,4 @@ class QuestionChunkPolicy(ABC):
 
 class SimpleQuestionChunkPolicy(QuestionChunkPolicy):
     def apply(self, dataset_instance: LongMemEvalInstance) -> str:
-        return dataset_instance.question
+        return f"{QUERY_PREFIX}{dataset_instance.question}"

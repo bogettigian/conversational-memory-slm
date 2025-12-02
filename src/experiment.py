@@ -34,7 +34,6 @@ You MUST answer "I don't know" if it's not possible to answer the question based
 "{question}"
 
 ### Previous Conversations
-
 {previous_conversations}
     """
     return [{"role": "user", "content": prompt}]

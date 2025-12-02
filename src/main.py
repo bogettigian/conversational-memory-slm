@@ -16,4 +16,5 @@ run_experiment(
     database=FaissDatabase(768),
     dataset_type="short",
     dataset_set="longmemeval",
+    limit=10
 )

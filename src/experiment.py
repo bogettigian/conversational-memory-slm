@@ -31,6 +31,7 @@ def run_experiment(
         database: FaissDatabase,
         dataset_type: str,
         dataset_set: str,
+        limit: int = None,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)
     results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}"
@@ -48,7 +49,7 @@ def run_experiment(
     )
     judge = JudgeAgent(judge_model_name) if judge_model_name else None
 
-    for instance in dataset[:]:
+    for instance in dataset[:limit]:
         result_file = f"{results_dir}/{instance.question_id}.json"
 
         if os.path.exists(result_file):

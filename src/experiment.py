@@ -12,12 +12,30 @@ from src.policies.save_chunk_policy import SaveChunkPolicy
 from src.policies.search_chunks_policy import SearchChunksPolicy
 
 
-def get_prompt(question, context):
+def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
+    if chunks:
+        previous_conversations = "\n".join([f'\n\n#### Conversation {i+1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
+    else:
+        previous_conversations = "No previous conversations."
     prompt = f"""
-    You are a helpful assistant that answers a question based on the evidence.
-    The evidence is: {context}
-    The question is: {question}
-    Return the answer to the question.
+    ## Role
+
+    You are a helpful assistant that answers the user's question.
+
+    ## Task
+
+    You are given a question and snippets of relevant previous conversations with the user, if any. You must answer the question.
+    
+    You MUST answer "I don't know" if it's not possible to answer the question based on the given conversations.
+
+    ## Inputs
+
+    ### Question
+
+    "{question}"
+
+    ### Previous Conversations
+    {previous_conversations}
     """
     return [{"role": "user", "content": prompt}]
 
@@ -59,8 +77,8 @@ def run_experiment(
         rag.save_embeddings(instance.sessions)
 
         start_time = time.time()
-        context = rag.retrieve_chunks(instance)
-        prompt = get_prompt(instance.question, context)
+        chunks = rag.retrieve_chunks(instance)
+        prompt = get_prompt(instance.question, chunks)
         response = completion(model=model_name, messages=prompt)
         predicted_answer = response.choices[0].message.content
         latency = time.time() - start_time

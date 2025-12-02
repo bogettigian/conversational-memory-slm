@@ -6,7 +6,7 @@ class FaissDatabase:
     """
     A vector database using FAISS for similarity search.
     
-    Uses IndexFlatL2 for exact L2 distance search.
+    Uses IndexFlatIP with L2-normalized vectors for cosine similarity search.
     Stores chunk metadata alongside embeddings.
     """
 
@@ -18,21 +18,22 @@ class FaissDatabase:
             dimension: The dimensionality of the embedding vectors.
         """
         self.dimension = dimension
-        self.index = faiss.IndexFlatL2(dimension)
-        self.chunks: list[dict[str, str]] = []
+        self.index = faiss.IndexFlatIP(dimension)
+        self.chunks: list[str] = []
 
-    def insert_embeddings(self, embeddings_matrix: np.ndarray[np.float32], chunks: list[dict[str, str]]) -> None:
+    def insert_embeddings(self, embeddings_matrix: np.ndarray[np.float32], chunks: list[str]) -> None:
         """
         Insert embeddings and their associated chunks into the database.
 
         Args:
             embeddings_matrix: Matrix of float32 embedding vectors.
-            chunks: List of chunk metadata dictionaries corresponding to each embedding.
+            chunks: List of chunk strings corresponding to each embedding.
         """
+        faiss.normalize_L2(embeddings_matrix)
         self.index.add(embeddings_matrix)
         self.chunks.extend(chunks)
 
-    def search(self, query: np.ndarray[np.float32], k: int = 5) -> list[dict[str, str]]:
+    def search(self, query: np.ndarray[np.float32], k: int = 5, threshold: float = 0.7) -> list[str]:
         """
         Search for the k most similar chunks to the query embedding.
 
@@ -41,7 +42,7 @@ class FaissDatabase:
             k: Number of nearest neighbors to return.
 
         Returns:
-            List of chunk metadata dictionaries for the k most similar chunks.
+            List of chunk strings for the k most similar chunks that have cosine similarity greater than or equal to threshold.
         """
         if self.index.ntotal == 0:
             return []
@@ -50,16 +51,18 @@ class FaissDatabase:
         if query.ndim != 2 or query.shape[0] != 1:
             raise ValueError("query must be 2D with shape (1, dimension)")
 
+        faiss.normalize_L2(query)
+
         # Limit k to available vectors
         k = min(k, self.index.ntotal)
 
-        # Search returns distances and indices
-        distances, indices = self.index.search(query, k)
+        # Search returns cosine similarities and indices
+        similarities, indices = self.index.search(query, k)
 
-        # Retrieve corresponding chunks
+        # Retrieve corresponding chunks if cosine similarity is greater than or equal to threshold
         results = []
-        for idx in indices[0]:
-            if idx >= 0:  # FAISS returns -1 for unfilled slots
+        for i, idx in enumerate(indices[0]):
+            if idx >= 0 and similarities[0][i] >= threshold:  # FAISS returns index=-1 for unfilled slots
                 results.append(self.chunks[idx])
 
         return results
@@ -71,5 +74,5 @@ class FaissDatabase:
 
     def clear(self) -> None:
         """Clear all vectors and chunks from the database."""
-        self.index = faiss.IndexFlatL2(self.dimension)
+        self.index = faiss.IndexFlatIP(self.dimension)
         self.chunks = []

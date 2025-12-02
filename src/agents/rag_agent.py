@@ -26,7 +26,7 @@ class RAGAgent:
         embeddings_matrix = RAGAgent.convert_to_embeddings_matrix(embeddings["data"])
         self.db.insert_embeddings(embeddings_matrix, chunks)
 
-    def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> list[dict[str, str]]:
+    def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> list[str]:
         question_embedding = embedding(model=self.embeddings_model_name, input=f"search_query: {dataset_instance.question}")
         embeddings_matrix = RAGAgent.convert_to_embeddings_matrix(question_embedding["data"])
         chunks = self.search_chunks_policy.apply(embeddings_matrix, self.db)

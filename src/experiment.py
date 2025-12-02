@@ -10,33 +10,8 @@ from src.database.faiss_database import FaissDatabase
 from src.datasets.dataset import LongMemEvalDataset
 from src.policies.save_chunk_policy import SaveChunkPolicy
 from src.policies.search_chunks_policy import SearchChunksPolicy
-
-
-def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
-    if chunks:
-        previous_conversations = "\n".join([f'\n#### Conversation {i+1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
-    else:
-        previous_conversations = "No previous conversations."
-    prompt = f"""## Role
-
-You are a helpful assistant that answers the user's question.
-
-## Task
-
-You are given a question and snippets of relevant previous conversations with the user, if any. You must answer the question.
-
-You MUST answer "I don't know" if it's not possible to answer the question based on the given conversations.
-
-## Inputs
-
-### Question
-
-"{question}"
-
-### Previous Conversations
-{previous_conversations}
-    """
-    return [{"role": "user", "content": prompt}]
+from src.utils.metrics import metric_generator
+from src.utils.prompt import get_prompt
 
 
 def run_experiment(
@@ -82,16 +57,18 @@ def run_experiment(
         predicted_answer = response.choices[0].message.content
         latency = time.time() - start_time
 
-        with open(result_file, "w", encoding="utf-8") as f:
+        with open(result_file, "w", encoding="utf-8") as file:
             result = {
                 "question_id": instance.question_id,
                 "question": instance.question,
                 "predicted_answer": predicted_answer,
                 "latency": latency,
+                "context_length": len(prompt[0]["content"]),
             }
             print(f"  Question: {instance.question}...")
             print(f"  Predicted: {predicted_answer}")
             print(f"  Latency: {latency}")
+            print(f"  Context length: {len(prompt[0]["content"])}")
 
             if judge:
                 answer_is_correct = judge.judge(instance, predicted_answer)
@@ -100,6 +77,7 @@ def run_experiment(
                 print(f"  Ground Truth: {instance.answer}")
                 print(f"  Correct: {answer_is_correct}")
 
-            json.dump(result, f, indent=2)
+            json.dump(result, file, indent=2)
         print("-" * 100)
+    metric_generator(results_dir)
     print("EVALUATION COMPLETE")

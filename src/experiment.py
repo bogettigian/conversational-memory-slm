@@ -14,7 +14,7 @@ from src.policies.search_chunks_policy import SearchChunksPolicy
 
 def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
     if chunks:
-        previous_conversations = "\n".join([f'\n\n#### Conversation {i+1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
+        previous_conversations = "\n".join([f'\n#### Conversation {i+1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
     else:
         previous_conversations = "No previous conversations."
     prompt = f"""
@@ -35,6 +35,7 @@ def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
     "{question}"
 
     ### Previous Conversations
+
     {previous_conversations}
     """
     return [{"role": "user", "content": prompt}]

@@ -8,7 +8,6 @@ from src.agents.judge_agent import JudgeAgent
 from src.agents.rag_agent import RAGAgent
 from src.database.faiss_database import FaissDatabase
 from src.datasets.dataset import LongMemEvalDataset
-from src.policies.question_chunk_policy import QuestionChunkPolicy
 from src.policies.save_chunk_policy import SaveChunkPolicy
 from src.policies.search_chunks_policy import SearchChunksPolicy
 
@@ -28,14 +27,13 @@ def run_experiment(
         embeddings_model_name: str,
         judge_model_name: str | None,
         save_chunk_policy: SaveChunkPolicy,
-        question_chunk_policy: QuestionChunkPolicy,
         search_chunks_policy: SearchChunksPolicy,
         database: FaissDatabase,
         dataset_type: str,
         dataset_set: str,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)
-    results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/embeddings_{embeddings_model_name.replace('/', '_')}_memory_{model_name.replace('/', '_')}_judge_{judge_model_name.replace('/', '_')}"
+    results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}"
     os.makedirs(results_dir, exist_ok=True)
 
     print(f"\nResults will be saved to: {results_dir}")
@@ -45,7 +43,6 @@ def run_experiment(
     rag = RAGAgent(
         embeddings_model_name,
         save_chunk_policy,
-        question_chunk_policy,
         search_chunks_policy,
         database
     )

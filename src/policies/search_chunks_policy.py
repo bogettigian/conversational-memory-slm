@@ -6,6 +6,7 @@ from src.database.faiss_database import FaissDatabase
 
 
 class SearchChunksPolicy(ABC):
+    name: str
     @abstractmethod
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase) -> list[dict[str, str]]:
         """Search the database for the most relevant chunks to the question digest embedding.
@@ -14,6 +15,8 @@ class SearchChunksPolicy(ABC):
 
 
 class SimpleSearchChunkPolicy(SearchChunksPolicy):
+    name = "simple_search"
+
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase) -> list[dict[str, str]]:
         result = database.search(embedding_matrix, k=5)
         return result

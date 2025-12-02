@@ -8,6 +8,7 @@ from src.datasets.dataset import Session
 
 
 class SaveChunkPolicy(ABC):
+    name: str
     @abstractmethod
     def apply(self, session_history: list[Session]) -> list[str]:
         """Partition the session history into chunks, so we can later embed them and save them in the database.
@@ -19,6 +20,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
     """Join messages into chunks that fit in the max chunk length and max chunk overlap.
     
     If it contains a message that exceeds the max chunk length, it will be split into smaller messages that fit in the chunk size."""
+    name = "sliding_window"
 
     def __init__(self, max_chunk_length: int, max_chunk_overlap: int):
         self.max_chunk_length = max_chunk_length

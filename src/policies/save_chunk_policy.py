@@ -37,18 +37,13 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
         return f"{role}: {content}"
 
     @staticmethod
-    def _format_chunk(session: Session, messages: list[dict]) -> str:
+    def _format_chunk(messages: list[dict]) -> str:
         dialogue_lines = [SlidingWindowSaveChunkPolicy._format_message(msg) for msg in messages]
-        return SlidingWindowSaveChunkPolicy._get_metadata_header(session) + "\n".join(dialogue_lines)
-
-    @staticmethod
-    def _get_metadata_header(session: Session) -> str:
-        return f"{SEARCH_PREFIX}Session_ID: {session.session_id}\nDate: {session.date}\n---\n"
+        return SEARCH_PREFIX + "\n".join(dialogue_lines)
 
     def _split_messages_by_tokens(self, session: Session) -> list[dict]:
         """Split messages that exceed the max token budget for a single chunk."""
-        metadata_header = self._get_metadata_header(session)
-        metadata_tokens = len(self.tokenizer.encode(metadata_header))
+        metadata_tokens = len(self.tokenizer.encode(SEARCH_PREFIX))
         available_tokens = self.max_chunk_length - metadata_tokens
 
         split_messages = []
@@ -85,10 +80,9 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
 
         return split_messages
 
-    def _create_token_bounded_chunks(self, session: Session, messages: list[dict]) -> list[str]:
+    def _create_token_bounded_chunks(self, messages: list[dict]) -> list[str]:
         """Create chunks that respect max_chunk_length and max_chunk_overlap in tokens."""
-        metadata_header = self._get_metadata_header(session)
-        metadata_tokens = len(self.tokenizer.encode(metadata_header))
+        metadata_tokens = len(self.tokenizer.encode(SEARCH_PREFIX))
         available_tokens = self.max_chunk_length - metadata_tokens
 
         chunks = []
@@ -107,7 +101,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
                 current_token_count += msg_tokens
             else:
                 if current_messages:
-                    chunks.append(self._format_chunk(session, current_messages))
+                    chunks.append(self._format_chunk(current_messages))
 
                 current_messages = [msg for msg, _ in overlap_window] + [message]
                 current_token_count = overlap_token_count + msg_tokens
@@ -120,7 +114,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
                 overlap_token_count -= removed_tokens
 
         if current_messages:
-            chunks.append(self._format_chunk(session, current_messages))
+            chunks.append(self._format_chunk(current_messages))
 
         return chunks
 
@@ -129,7 +123,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
 
         for session in session_history:
             split_messages = self._split_messages_by_tokens(session)
-            session_chunks = self._create_token_bounded_chunks(session, split_messages)
+            session_chunks = self._create_token_bounded_chunks(split_messages)
             chunks.extend(session_chunks)
 
         return chunks

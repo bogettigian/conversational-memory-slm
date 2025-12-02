@@ -31,9 +31,15 @@ class FaissDatabase:
         """
         faiss.normalize_L2(embeddings_matrix)
         self.index.add(embeddings_matrix)
-        self.chunks.extend(chunks)
+        normalized_chunks = []
+        for chunk in chunks:
+            if chunk.startswith("search_document: "):
+                normalized_chunks.append(chunk[len("search_document: "):])
+            else:
+                normalized_chunks.append(chunk)
+        self.chunks.extend(normalized_chunks)
 
-    def search(self, query: np.ndarray[np.float32], k: int = 5, threshold: float = 0.7) -> list[str]:
+    def search(self, query: np.ndarray[np.float32], k: int = 5, threshold: float = 0.6) -> list[str]:
         """
         Search for the k most similar chunks to the query embedding.
 

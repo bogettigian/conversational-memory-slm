@@ -21,15 +21,15 @@ class RAGAgent:
         self.db = db
 
     def save_embeddings(self, session_history: list[Session]) -> None:
-        chunks = self.save_chunk_policy.apply(session_history)
+        chunks, metadata = self.save_chunk_policy.apply(session_history)
         embeddings = embedding(model=self.embeddings_model_name, input=chunks)
         embeddings_matrix = RAGAgent.convert_to_embeddings_matrix(embeddings["data"])
-        self.db.insert_embeddings(embeddings_matrix, chunks)
+        self.db.insert_embeddings(embeddings_matrix, chunks, metadata)
 
     def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> list[str]:
         question_embedding = embedding(model=self.embeddings_model_name, input=f"search_query: {dataset_instance.question}")
         embeddings_matrix = RAGAgent.convert_to_embeddings_matrix(question_embedding["data"])
-        chunks = self.search_chunks_policy.apply(embeddings_matrix, self.db)
+        chunks = self.search_chunks_policy.apply(embeddings_matrix, self.db, dataset_instance)
         return chunks
 
     @staticmethod

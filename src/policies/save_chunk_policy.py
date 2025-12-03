@@ -6,14 +6,14 @@ from transformers import AutoTokenizer
 
 from src.datasets.dataset import Session
 
-
 SEARCH_PREFIX = "search_document: "
 
 
 class SaveChunkPolicy(ABC):
     name: str
+
     @abstractmethod
-    def apply(self, session_history: list[Session]) -> list[str]:
+    def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         """Partition the session history into chunks, so we can later embed them and save them in the database.
         """
         pass
@@ -118,12 +118,14 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
 
         return chunks
 
-    def apply(self, session_history: list[Session]) -> list[str]:
+    def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []
+        metadata = []
 
         for session in session_history:
             split_messages = self._split_messages_by_tokens(session)
             session_chunks = self._create_token_bounded_chunks(split_messages)
             chunks.extend(session_chunks)
+            metadata.extend([{"date" : session.date}] * len(session_chunks))
 
-        return chunks
+        return chunks, metadata

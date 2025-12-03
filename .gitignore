@@ -8,3 +8,4 @@ logs/
 .idea/
 
 aws.pem
+.DS_Store

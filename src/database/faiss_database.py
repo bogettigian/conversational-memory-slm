@@ -20,8 +20,9 @@ class FaissDatabase:
         self.dimension = dimension
         self.index = faiss.IndexFlatIP(dimension)
         self.chunks: list[str] = []
+        self.metadata: list[dict] = []
 
-    def insert_embeddings(self, embeddings_matrix: np.ndarray[np.float32], chunks: list[str]) -> None:
+    def insert_embeddings(self, embeddings_matrix: np.ndarray[np.float32], chunks: list[str], metadata: list[dict]) -> None:
         """
         Insert embeddings and their associated chunks into the database.
 
@@ -38,8 +39,9 @@ class FaissDatabase:
             else:
                 normalized_chunks.append(chunk)
         self.chunks.extend(normalized_chunks)
+        self.metadata.extend(metadata)
 
-    def search(self, query: np.ndarray[np.float32], k: int = 5, threshold: float = 0.6) -> list[str]:
+    def search(self, query: np.ndarray[np.float32], k: int = 5, threshold: float = 0.6) -> tuple[list[str], list[dict]]:
         """
         Search for the k most similar chunks to the query embedding.
 
@@ -67,11 +69,13 @@ class FaissDatabase:
 
         # Retrieve corresponding chunks if cosine similarity is greater than or equal to threshold
         results = []
+        metadata = []
         for i, idx in enumerate(indices[0]):
             if idx >= 0 and similarities[0][i] >= threshold:  # FAISS returns index=-1 for unfilled slots
                 results.append(self.chunks[idx])
+                metadata.append(self.metadata[idx])
 
-        return results
+        return results, metadata
 
     @property
     def total_vectors(self) -> int:
@@ -82,3 +86,4 @@ class FaissDatabase:
         """Clear all vectors and chunks from the database."""
         self.index = faiss.IndexFlatIP(self.dimension)
         self.chunks = []
+        self.metadata = []

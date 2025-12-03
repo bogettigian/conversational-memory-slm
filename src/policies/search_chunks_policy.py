@@ -11,11 +11,53 @@ from src.datasets.dataset import LongMemEvalInstance
 from src.utils.prompt import get_date_prompt
 
 
+def _time_pruning(chunks, metadata, start, end, k):
+    in_time_range = []
+    out_time_range = []
+    for i, chunk in enumerate(chunks):
+        date = datetime.strptime(metadata[i]["date"], "%Y/%m/%d (%a) %H:%M")
+        if start < date < end:
+            in_time_range.append(chunk)
+        else:
+            out_time_range.append(chunk)
+
+    return in_time_range[:k] if len(in_time_range) > 0 else out_time_range[:k]
+
+
+def _generate_time_range(date_model_name: str, dataset_instance: LongMemEvalInstance) -> tuple[
+                                                                                             datetime, datetime] | None:
+    prompt = get_date_prompt(dataset_instance.question, dataset_instance.t_question)
+    response = completion(model=date_model_name, messages=prompt)
+    answer = response.choices[0].message.content.strip()
+
+    answer = answer.replace('```json', '')
+    answer = answer.replace('```', '').strip()
+    time_range = json.loads(answer.strip())
+
+    if not time_range:
+        return None
+
+    start = datetime.strptime(time_range['start'], "%Y/%m/%d") - timedelta(days=2)
+    end = datetime.strptime(time_range['end'], "%Y/%m/%d") + timedelta(days=2)
+
+    return start, end
+
+
+def _rerank_chunks(reranker: CrossEncoder, query: str, chunks: list[str], k: int) -> list[str]:
+    pairs = [[query, chunk] for chunk in chunks]
+    scores = reranker.predict(pairs)
+    scored_chunks = [(score, chunk) for score, chunk in zip(scores, chunks)]
+    scored_chunks.sort(key=lambda x: x[0], reverse=True)
+
+    return [chunk for _, chunk in scored_chunks[:k]]
+
+
 class SearchChunksPolicy(ABC):
     name: str
 
     @abstractmethod
-    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase,
+              dataset_instance: LongMemEvalInstance) -> list[str]:
         pass
 
 
@@ -27,72 +69,63 @@ class SimpleSearchChunkPolicy(SearchChunksPolicy):
         self.threshold = threshold
 
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        result = database.search(embedding_matrix, k=self.k, threshold=self.threshold)
-        return result[0]
+        chunks, _ = database.search(embedding_matrix, k=self.k, threshold=self.threshold)
+        return chunks
 
 
 class TimePruningSearchChunkPolicy(SearchChunksPolicy):
-    name = "time_pruning"
+    name = "time_pruning_search"
 
-    def __init__(self, date_model_name: str, k: int = 5, threshold: float = 0.4):
+    def __init__(self, date_model_name: str, k: int = 5, threshold: float = 0.3):
         self.date_model_name = date_model_name
         self.k = k
         self.threshold = threshold
 
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        prompt = get_date_prompt(dataset_instance.question, dataset_instance.t_question)
-        response = completion(model=self.date_model_name, messages=prompt)
-        answer = response.choices[0].message.content.strip()
+        chunks, metadata = database.search(embedding_matrix, k=self.k * 2, threshold=self.threshold)
+        if not chunks:
+            return []
 
-        answer = answer.replace('```json', '')
-        answer = answer.replace('```', '').strip()
-        time_range = json.loads(answer.strip())
-
-        result = database.search(embedding_matrix, k=self.k*2, threshold=self.threshold)
-
+        time_range = _generate_time_range(self.date_model_name, dataset_instance)
         if not time_range:
-            return result[0][:self.k]
+            return chunks[:self.k]
 
-        start = datetime.strptime(time_range['start'], "%Y/%m/%d") - timedelta(days=2)
-        end = datetime.strptime(time_range['end'], "%Y/%m/%d") + timedelta(days=2)
-
-        in_time_range = []
-        out_time_range = []
-        for i, chunk in enumerate(result[0]):
-            date = datetime.strptime(result[1][i]["date"], "%Y/%m/%d (%a) %H:%M")
-            if start < date < end:
-                in_time_range.append(chunk)
-            else:
-                out_time_range.append(chunk)
-
-        return in_time_range[:self.k] if len(in_time_range) > 0 else out_time_range[:self.k]
+        return _time_pruning(chunks, metadata, time_range[0], time_range[1], self.k)
 
 
 class RerankSearchChunkPolicy(SearchChunksPolicy):
     name = "rerank_search"
 
-    def __init__(self, reranker_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"):
+    def __init__(self, reranker_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2", k: int = 3, threshold: float = 0.3):
         self.reranker = CrossEncoder(reranker_model)
+        self.k = k
+        self.threshold = threshold
 
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        query = dataset_instance.question
-        chunks, _ = database.search(embedding_matrix, k=30, threshold=0.3)
-
+        chunks, _ = database.search(embedding_matrix, k=self.k * 10, threshold=self.threshold)
         if not chunks:
             return []
 
-        reranked_chunks = self._rerank_chunks(query, chunks, k=3)
-        return reranked_chunks
+        return _rerank_chunks(self.reranker, dataset_instance.question, chunks, k=self.k)
 
-    def _rerank_chunks(self, query: str, chunks: list[str], k: int) -> list[str]:
+
+class RerankTimePruningSearchChunkPolicy(SearchChunksPolicy):
+    name = "rerank_time_pruning_search"
+
+    def __init__(self, date_model_name: str, reranker_model_name: str, k: int = 3, threshold: float = 0.3):
+        self.date_model_name = date_model_name
+        self.reranker = CrossEncoder(reranker_model_name)
+        self.k = k
+        self.threshold = threshold
+
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
+        chunks, metadata = database.search(embedding_matrix, k=self.k * 10, threshold=self.threshold)
         if not chunks:
             return []
 
-        pairs = [[query, chunk] for chunk in chunks]
+        time_range = _generate_time_range(self.date_model_name, dataset_instance)
+        if not time_range:
+            return _rerank_chunks(self.reranker, dataset_instance.question, chunks, k=self.k)
 
-        scores = self.reranker.predict(pairs)
-
-        scored_chunks = [(score, chunk) for score, chunk in zip(scores, chunks)]
-        scored_chunks.sort(key=lambda x: x[0], reverse=True)
-
-        return [chunk for _, chunk in scored_chunks[:k]]
+        pruned_chunks = _time_pruning(chunks, metadata, time_range[0], time_range[1], self.k * 10)
+        return _rerank_chunks(self.reranker, dataset_instance.question, pruned_chunks, k=self.k)

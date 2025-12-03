@@ -32,7 +32,10 @@ def _generate_time_range(date_model_name: str, dataset_instance: LongMemEvalInst
 
     answer = answer.replace('```json', '')
     answer = answer.replace('```', '').strip()
-    time_range = json.loads(answer.strip())
+    try:
+        time_range = json.loads(answer)
+    except json.JSONDecodeError:
+        return None
 
     if not time_range:
         return None

@@ -1,9 +1,4 @@
-def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
-    if chunks:
-        previous_conversations = "\n".join([f'\n### Chat {i+1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
-    else:
-        previous_conversations = "No relevant chats history."
-    prompt = f"""# Role
+COT_PROMPT = f"""# Role
 
 You are a helpful assistant that answers the user's question.
 
@@ -12,13 +7,39 @@ You are a helpful assistant that answers the user's question.
 I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.
 
 # Chats History
-{previous_conversations}
+%s
 
 # Question
 
-"{question}"
+%s
 
 # Answer (step by step)
 
 """
+
+PROMPT = f"""# Role
+
+You are a helpful assistant that answers the user's question.
+
+# Task
+
+I will give you several history chats between you and a user. Please answer the question based on the relevant chat history.
+
+# Chats History
+%s
+
+# Question
+
+%s
+
+# Answer
+
+"""
+
+def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
+    if chunks:
+        previous_conversations = "\n".join([f'\n### Chat {i+1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
+    else:
+        previous_conversations = "No relevant chats history."
+    prompt = PROMPT % (previous_conversations, question)
     return [{"role": "user", "content": prompt}]

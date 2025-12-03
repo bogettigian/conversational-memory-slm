@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from litellm import completion
+from sentence_transformers import CrossEncoder
 
 from src.database.faiss_database import FaissDatabase
 from src.datasets.dataset import LongMemEvalInstance
@@ -15,8 +16,6 @@ class SearchChunksPolicy(ABC):
 
     @abstractmethod
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        """Search the database for the most relevant chunks to the question digest embedding.
-        """
         pass
 
 
@@ -67,3 +66,33 @@ class TimePruningSearchChunkPolicy(SearchChunksPolicy):
                 out_time_range.append(chunk)
 
         return in_time_range[:self.k] if len(in_time_range) > 0 else out_time_range[:self.k]
+
+
+class RerankSearchChunkPolicy(SearchChunksPolicy):
+    name = "rerank_search"
+
+    def __init__(self, reranker_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"):
+        self.reranker = CrossEncoder(reranker_model)
+
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
+        query = dataset_instance.question
+        chunks, _ = database.search(embedding_matrix, k=30, threshold=0.3)
+
+        if not chunks:
+            return []
+
+        reranked_chunks = self._rerank_chunks(query, chunks, k=3)
+        return reranked_chunks
+
+    def _rerank_chunks(self, query: str, chunks: list[str], k: int) -> list[str]:
+        if not chunks:
+            return []
+
+        pairs = [[query, chunk] for chunk in chunks]
+
+        scores = self.reranker.predict(pairs)
+
+        scored_chunks = [(score, chunk) for score, chunk in zip(scores, chunks)]
+        scored_chunks.sort(key=lambda x: x[0], reverse=True)
+
+        return [chunk for _, chunk in scored_chunks[:k]]

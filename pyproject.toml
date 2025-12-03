@@ -14,5 +14,6 @@ dependencies = [
     "black",
     "faiss-cpu",
     "numpy",
-    "transformers"
+    "transformers",
+    "sentence-transformers",
 ]

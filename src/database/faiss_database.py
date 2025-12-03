@@ -50,7 +50,7 @@ class FaissDatabase:
             k: Number of nearest neighbors to return.
 
         Returns:
-            List of chunk strings for the k most similar chunks that have cosine similarity greater than or equal to threshold.
+            Tuple of (list of chunk strings, list of metadata) for the k most similar chunks that have cosine similarity greater than or equal to threshold.
         """
         if self.index.ntotal == 0:
             return []

@@ -1,5 +1,7 @@
 import json
 
+from src.datasets.dataset import Session
+
 COT_PROMPT = f"""# Role
 
 You are a helpful assistant that answers the user's question.
@@ -85,3 +87,30 @@ def get_date_prompt(question: str, question_date: str) -> list[dict[str, str]]:
         ]
     messages += [{"role": "user", "content": user_prompt.format(question_date, question)}]
     return messages
+
+
+def get_contextual_prompt(session: Session, chunk: str) -> list[dict[str, str]]:
+    prompt = f"""
+<document>
+
+{session.messages}
+
+</document>
+
+<chunk_date>
+
+{session.date}
+
+</chunk_date>
+
+Here is the chunk we want to situate within the whole document
+
+<chunk>
+
+{chunk}
+
+</chunk>
+
+Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else. 
+"""
+    return [{"role": "user", "content": prompt}]

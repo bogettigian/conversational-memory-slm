@@ -51,8 +51,8 @@ def run_experiment(
         rag.save_embeddings(instance.sessions)
 
         start_time = time.time()
-        chunks = rag.retrieve_chunks(instance)
-        prompt = get_prompt(instance.question, chunks)
+        chunks, metadata = rag.retrieve_chunks(instance)
+        prompt = get_prompt(instance, chunks, metadata)
         response = completion(model=model_name, messages=prompt)
         predicted_answer = response.choices[0].message.content
         latency = time.time() - start_time

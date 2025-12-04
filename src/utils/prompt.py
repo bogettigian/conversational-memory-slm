@@ -1,4 +1,7 @@
 import json
+from datetime import datetime
+
+from src.datasets.dataset import LongMemEvalInstance
 
 COT_PROMPT = f"""# Role
 
@@ -6,7 +9,9 @@ You are a helpful assistant that answers the user's question.
 
 # Task
 
-I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.
+I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer. The question is: "%s".
+
+The current date is %s.
 
 # Chats History
 %s
@@ -25,7 +30,9 @@ You are a helpful assistant that answers the user's question.
 
 # Task
 
-I will give you several history chats between you and a user. Please answer the question based on the relevant chat history.
+I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. The question is: "%s"
+
+The current date is %s.
 
 # Chats History
 %s
@@ -39,13 +46,80 @@ I will give you several history chats between you and a user. Please answer the 
 """
 
 
-def get_prompt(question: str, chunks: list[str]) -> list[dict[str, str]]:
-    if chunks:
-        previous_conversations = "\n".join(
-            [f'\n### Chat {i + 1}\n\n"""\n{conversation}\n"""' for i, conversation in enumerate(chunks)])
+def _format_date(date_string: str, reference_date: str = None) -> str:
+    """
+    Format date from "2023/03/04 (Sat) 03:50" to "Saturday March 4th 2023"
+
+    If reference_date is provided, add the relative time to the date string. E.g. "Saturday March 4th 2023 (X days/weeks/months/years ago)".
+    """
+    # Parse the date string (ignoring time part)
+    date_part = date_string.split(' ')[0]  # Get "2023/03/04"
+    parsed_date = datetime.strptime(date_part, "%Y/%m/%d")
+
+    # Get day with ordinal suffix
+    day = parsed_date.day
+    if 11 <= day <= 13:
+        suffix = "th"
     else:
-        previous_conversations = "No relevant chats history."
-    prompt = PROMPT % (previous_conversations, question)
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    day_with_suffix = f"{day}{suffix}"
+
+    # Format the basic date string
+    formatted_date = parsed_date.strftime(f"%A %B {day_with_suffix} %Y")
+
+    # Add relative time if reference_date is provided
+    if reference_date:
+        ref_date_part = reference_date.split(' ')[0]
+        ref_parsed_date = datetime.strptime(ref_date_part, "%Y/%m/%d")
+
+        # Calculate the difference
+        delta = ref_parsed_date - parsed_date
+
+        if delta.days == 0:
+            relative_time = "(today)"
+        elif delta.days == 1:
+            relative_time = "(1 day ago)"
+        elif delta.days < 7:
+            relative_time = f"({delta.days} days ago)"
+        elif delta.days < 30:
+            weeks = delta.days // 7
+            if weeks == 1:
+                relative_time = "(1 week ago)"
+            else:
+                relative_time = f"({weeks} weeks ago)"
+        elif delta.days < 365:
+            months = delta.days // 30
+            if months == 1:
+                relative_time = "(1 month ago)"
+            else:
+                relative_time = f"({months} months ago)"
+        else:
+            years = delta.days // 365
+            if years == 1:
+                relative_time = "(1 year ago)"
+            else:
+                relative_time = f"({years} years ago)"
+
+        formatted_date += f" {relative_time}"
+
+    return formatted_date
+
+
+def get_prompt(instance: LongMemEvalInstance, chunks: list[str], metadata: list[dict[str, str]]) -> list[dict[str, str]]:
+    question_date = instance.t_question
+    if chunks:
+        # Sort chunks chronologically (oldest first) by parsing the date from metadata
+        combined = list(zip(chunks, metadata))
+        combined.sort(key=lambda x: datetime.strptime(x[1]["date"].split(' ')[0], "%Y/%m/%d"))
+        sorted_chunks, sorted_metadata = zip(*combined)
+
+        previous_conversations = "\n".join(
+            [f'\n### Chat {_format_date(sorted_metadata[i]["date"], question_date)}\n\n"""\n{sorted_chunks[i]}\n"""' for i in range(len(sorted_chunks))])
+    else:
+        previous_conversations = "\nNo relevant chats history."
+
+    question = instance.question
+    prompt = COT_PROMPT % (question, _format_date(question_date), previous_conversations, question)
     return [{"role": "user", "content": prompt}]
 
 

@@ -11,7 +11,7 @@ from src.datasets.dataset import LongMemEvalInstance
 from src.utils.prompt import get_date_prompt
 
 
-def _time_pruning(chunks, metadata, start, end, k):
+def _time_pruning(chunks: list[str], metadata: list[dict[str, str]], start: datetime, end: datetime, k: int) -> tuple[list[str], list[dict[str, str]]]:
     in_time_range = []
     out_time_range = []
     for i, chunk in enumerate(chunks):
@@ -21,7 +21,7 @@ def _time_pruning(chunks, metadata, start, end, k):
         else:
             out_time_range.append(chunk)
 
-    return in_time_range[:k] if len(in_time_range) > 0 else out_time_range[:k]
+    return in_time_range[:k] if len(in_time_range) > 0 else out_time_range[:k], metadata[:k]
 
 
 def _generate_time_range(date_model_name: str, dataset_instance: LongMemEvalInstance) -> tuple[
@@ -46,13 +46,12 @@ def _generate_time_range(date_model_name: str, dataset_instance: LongMemEvalInst
     return start, end
 
 
-def _rerank_chunks(reranker: CrossEncoder, query: str, chunks: list[str], k: int) -> list[str]:
+def _rerank_chunks(reranker: CrossEncoder, query: str, chunks: list[str], metadata: list[dict[str, str]], k: int) -> tuple[list[str], list[dict[str, str]]]:
     pairs = [[query, chunk] for chunk in chunks]
     scores = reranker.predict(pairs)
-    scored_chunks = [(score, chunk) for score, chunk in zip(scores, chunks)]
+    scored_chunks = [(score, chunk, metadata) for score, chunk, metadata in zip(scores, chunks, metadata)]
     scored_chunks.sort(key=lambda x: x[0], reverse=True)
-
-    return [chunk for _, chunk in scored_chunks[:k]]
+    return [chunk for _, chunk, _ in scored_chunks[:k]], [metadata for _, _, metadata in scored_chunks[:k]]
 
 
 class SearchChunksPolicy(ABC):
@@ -60,7 +59,7 @@ class SearchChunksPolicy(ABC):
 
     @abstractmethod
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase,
-              dataset_instance: LongMemEvalInstance) -> list[str]:
+              dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
         pass
 
 
@@ -71,9 +70,9 @@ class SimpleSearchChunkPolicy(SearchChunksPolicy):
         self.k = k
         self.threshold = threshold
 
-    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        chunks, _ = database.search(embedding_matrix, k=self.k, threshold=self.threshold)
-        return chunks
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
+        chunks, metadata = database.search(embedding_matrix, k=self.k, threshold=self.threshold)
+        return chunks, metadata
 
 
 class TimePruningSearchChunkPolicy(SearchChunksPolicy):
@@ -91,7 +90,7 @@ class TimePruningSearchChunkPolicy(SearchChunksPolicy):
 
         time_range = _generate_time_range(self.date_model_name, dataset_instance)
         if not time_range:
-            return chunks[:self.k]
+            return chunks[:self.k], metadata[:self.k]
 
         return _time_pruning(chunks, metadata, time_range[0], time_range[1], self.k)
 
@@ -105,11 +104,11 @@ class RerankSearchChunkPolicy(SearchChunksPolicy):
         self.threshold = threshold
 
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        chunks, _ = database.search(embedding_matrix, k=self.k * 10, threshold=self.threshold)
+        chunks, metadata = database.search(embedding_matrix, k=self.k * 10, threshold=self.threshold)
         if not chunks:
             return []
 
-        return _rerank_chunks(self.reranker, dataset_instance.question, chunks, k=self.k)
+        return _rerank_chunks(self.reranker, dataset_instance.question, chunks, metadata, k=self.k)
 
 
 class RerankTimePruningSearchChunkPolicy(SearchChunksPolicy):
@@ -128,7 +127,7 @@ class RerankTimePruningSearchChunkPolicy(SearchChunksPolicy):
 
         time_range = _generate_time_range(self.date_model_name, dataset_instance)
         if not time_range:
-            return _rerank_chunks(self.reranker, dataset_instance.question, chunks, k=self.k)
+            return _rerank_chunks(self.reranker, dataset_instance.question, chunks, metadata, k=self.k)
 
-        pruned_chunks = _time_pruning(chunks, metadata, time_range[0], time_range[1], self.k * 10)
-        return _rerank_chunks(self.reranker, dataset_instance.question, pruned_chunks, k=self.k)
+        pruned_chunks, metadata = _time_pruning(chunks, metadata, time_range[0], time_range[1], self.k * 10)
+        return _rerank_chunks(self.reranker, dataset_instance.question, pruned_chunks, metadata, k=self.k)

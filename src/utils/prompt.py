@@ -171,11 +171,11 @@ def get_contextual_prompt(session: Session, chunk: str) -> list[dict[str, str]]:
 
 </document>
 
-<chunk_date>
+<document_date>
 
 {session.date}
 
-</chunk_date>
+</document_date>
 
 Here is the chunk we want to situate within the whole document
 

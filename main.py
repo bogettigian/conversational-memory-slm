@@ -13,7 +13,6 @@ run_experiment(
     judge_model_name="ollama/gemma3:4b",
     save_chunk_policy=ContextualSlidingWindowSaveChunkPolicy("ollama/gemma3:4b", 256, 64),
     search_chunks_policy=RerankTimePruningSearchChunkPolicy("ollama/gemma3:4b", "BAAI/bge-reranker-v2-m3"),
-    database=FaissDatabase(1024),
     database=FaissDatabase(768),
     dataset_type="short",
     dataset_set="longmemeval",

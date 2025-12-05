@@ -47,11 +47,8 @@ def _generate_time_range(date_model_name: str, dataset_instance: LongMemEvalInst
 
 
 def _rerank_chunks(reranker: CrossEncoder, query: str, chunks: list[str], metadata: list[dict[str, str]], k: int) -> tuple[list[str], list[dict[str, str]]]:
-    pairs = [[query, chunk] for chunk in chunks]
-    scores = reranker.predict(pairs)
-    scored_chunks = [(score, chunk, metadata) for score, chunk, metadata in zip(scores, chunks, metadata)]
-    scored_chunks.sort(key=lambda x: x[0], reverse=True)
-    return [chunk for _, chunk, _ in scored_chunks[:k]], [metadata for _, _, metadata in scored_chunks[:k]]
+    results = reranker.rank(query, chunks, top_k=k, return_documents=True)
+    return [result["text"] for result in results], [metadata[result["corpus_id"]] for result in results]
 
 
 class SearchChunksPolicy(ABC):

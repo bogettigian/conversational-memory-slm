@@ -41,7 +41,7 @@ def run_experiment(
         database
     )
     judge = JudgeAgent(judge_model_name) if judge_model_name else None
-    limit = limit if limit else len(dataset)
+
     for instance in dataset[:limit]:
         result_file = f"{results_dir}/{instance.question_id}.json"
 
@@ -49,7 +49,10 @@ def run_experiment(
             print(f"Skipping {instance.question_id} because it already exists", flush=True)
             continue
         database.clear()
+
+        start_time = time.time()
         rag.save_embeddings(instance.sessions)
+        offline_latency = time.time() - start_time
 
         best_result = None
         for attempt in range(1, top_k + 1):
@@ -58,21 +61,25 @@ def run_experiment(
             prompt = get_prompt(instance, chunks, metadata)
             response = completion(model=model_name, messages=prompt)
             predicted_answer = response.choices[0].message.content
-            latency = time.time() - start_time
+            online_latency = time.time() - start_time
 
             result = {
                 "question_id": instance.question_id,
                 "question": instance.question,
+                "question_type": instance.question_type,
                 "predicted_answer": predicted_answer,
-                "latency": latency,
+                "online_latency": online_latency,
+                "offline_latency": offline_latency,
                 "context_length": len(prompt[0]["content"]),
                 "attempts": attempt,
             }
 
             print(f"  Attempt {attempt}/{top_k}")
             print(f"  Question: {instance.question}...")
+            print(f"  Question type: {instance.question_type}...")
             print(f"  Predicted: {predicted_answer}")
-            print(f"  Latency: {latency}")
+            print(f"  Online Latency: {online_latency}")
+            print(f"  Offline Latency: {offline_latency}")
             print(f"  Context length: {len(prompt[0]['content'])}")
 
             if judge:

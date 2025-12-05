@@ -13,9 +13,10 @@ class Session:
 
 
 class LongMemEvalInstance:
-    def __init__(self, question_id, question, sessions, t_question, answer):
+    def __init__(self, question_id, question, question_type, sessions, t_question, answer):
         self.question_id = question_id
         self.question = question
+        self.question_type = question_type
         self.sessions = sessions
         self.t_question = t_question
         self.answer = answer
@@ -78,6 +79,7 @@ class LongMemEvalDataset:
         return LongMemEvalInstance(
             question_id=row["question_id"],
             question=row["question"],
+            question_type=row["question_type"],
             sessions=[
                 Session(session_id=session_id, date=date, messages=messages)
                 for session_id, date, messages in zip(

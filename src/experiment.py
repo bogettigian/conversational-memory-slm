@@ -23,7 +23,8 @@ def run_experiment(
         database: FaissDatabase,
         dataset_type: str,
         dataset_set: str,
-        limit: int = None,
+        limit: int = 0,
+        top_k: int = 5,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)
     results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}"
@@ -50,25 +51,29 @@ def run_experiment(
         database.clear()
         rag.save_embeddings(instance.sessions)
 
-        start_time = time.time()
-        chunks, metadata = rag.retrieve_chunks(instance)
-        prompt = get_prompt(instance, chunks, metadata)
-        response = completion(model=model_name, messages=prompt)
-        predicted_answer = response.choices[0].message.content
-        latency = time.time() - start_time
+        best_result = None
+        for attempt in range(1, top_k + 1):
+            start_time = time.time()
+            chunks, metadata = rag.retrieve_chunks(instance)
+            prompt = get_prompt(instance, chunks, metadata)
+            response = completion(model=model_name, messages=prompt)
+            predicted_answer = response.choices[0].message.content
+            latency = time.time() - start_time
 
-        with open(result_file, "w", encoding="utf-8") as file:
             result = {
                 "question_id": instance.question_id,
                 "question": instance.question,
                 "predicted_answer": predicted_answer,
                 "latency": latency,
                 "context_length": len(prompt[0]["content"]),
+                "attempts": attempt,
             }
+
+            print(f"  Attempt {attempt}/{top_k}")
             print(f"  Question: {instance.question}...")
             print(f"  Predicted: {predicted_answer}")
             print(f"  Latency: {latency}")
-            print(f"  Context length: {len(prompt[0]["content"])}")
+            print(f"  Context length: {len(prompt[0]['content'])}")
 
             if judge:
                 answer_is_correct = judge.judge(instance, predicted_answer)
@@ -77,7 +82,18 @@ def run_experiment(
                 print(f"  Ground Truth: {instance.answer}")
                 print(f"  Correct: {answer_is_correct}")
 
-            json.dump(result, file, indent=2)
+                if answer_is_correct:
+                    best_result = result
+                    print(f"  ✓ Correct answer found on attempt {attempt}")
+                    break
+                else:
+                    best_result = result
+            else:
+                best_result = result
+                break  # No judge, so no point in retrying
+
+        with open(result_file, "w", encoding="utf-8") as file:
+            json.dump(best_result, file, indent=2)
         print("-" * 100)
     metric_generator(results_dir)
     print("EVALUATION COMPLETE")

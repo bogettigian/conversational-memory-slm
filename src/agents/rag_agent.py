@@ -1,5 +1,5 @@
 import numpy as np
-from litellm import embedding
+from sentence_transformers import SentenceTransformer
 
 from src.database.faiss_database import FaissDatabase
 from src.datasets.dataset import LongMemEvalInstance, Session
@@ -15,23 +15,17 @@ class RAGAgent:
             search_chunks_policy: SearchChunksPolicy,
             db: FaissDatabase,
     ):
-        self.embeddings_model_name = embeddings_model_name
+        self.embedding_model = SentenceTransformer(embeddings_model_name, trust_remote_code=True)
         self.save_chunk_policy = save_chunk_policy
         self.search_chunks_policy = search_chunks_policy
         self.db = db
 
     def save_embeddings(self, session_history: list[Session]) -> None:
         chunks, metadata = self.save_chunk_policy.apply(session_history)
-        embeddings = embedding(model=self.embeddings_model_name, input=chunks)
-        embeddings_matrix = RAGAgent.convert_to_embeddings_matrix(embeddings["data"])
+        embeddings_matrix = self.embedding_model.encode(chunks, convert_to_numpy=True).astype(np.float32)
         self.db.insert_embeddings(embeddings_matrix, chunks, metadata)
 
     def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
-        question_embedding = embedding(model=self.embeddings_model_name, input=f"search_query: {dataset_instance.question}")
-        embeddings_matrix = RAGAgent.convert_to_embeddings_matrix(question_embedding["data"])
-        chunks, metadata = self.search_chunks_policy.apply(embeddings_matrix, self.db, dataset_instance)
+        question_embedding = self.embedding_model.encode(dataset_instance.question, convert_to_numpy=True).astype(np.float32).reshape(1, -1)
+        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.db, dataset_instance)
         return chunks, metadata
-
-    @staticmethod
-    def convert_to_embeddings_matrix(embeddings: list[dict[str, str]]) -> np.ndarray[np.float32]:
-        return np.array([item['embedding'] for item in embeddings], dtype=np.float32)

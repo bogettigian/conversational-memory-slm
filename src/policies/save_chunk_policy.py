@@ -8,8 +8,6 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from src.datasets.dataset import Session
 from src.utils.prompt import get_contextual_prompt
 
-SEARCH_PREFIX = "search_document: "
-
 
 def _format_message(message: dict) -> str:
     role = message["role"].capitalize()
@@ -19,20 +17,17 @@ def _format_message(message: dict) -> str:
 
 def _format_chunk(messages: list[dict]) -> str:
     dialogue_lines = [_format_message(msg) for msg in messages]
-    return SEARCH_PREFIX + "\n".join(dialogue_lines)
+    return "\n".join(dialogue_lines)
 
 
 def _split_messages_by_tokens(tokenizer: PreTrainedTokenizerFast, session: Session, max_chunk_length: int) -> list[dict]:
     """Split messages that exceed the max token budget for a single chunk."""
-    metadata_tokens = len(tokenizer.encode(SEARCH_PREFIX))
-    available_tokens = max_chunk_length - metadata_tokens
-
     split_messages = []
     for message in session.messages:
         formatted = _format_message(message)
         tokens = tokenizer.encode(formatted)
 
-        if len(tokens) <= available_tokens:
+        if len(tokens) <= max_chunk_length:
             split_messages.append(message)
         else:
             # Split long message into smaller messages that fit in the chunk size
@@ -42,7 +37,7 @@ def _split_messages_by_tokens(tokenizer: PreTrainedTokenizerFast, session: Sessi
 
             role_overhead = len(tokenizer.encode(f"{role}: "))
             ellipsis_overhead = len(tokenizer.encode("..."))
-            max_content_tokens = available_tokens - role_overhead - ellipsis_overhead
+            max_content_tokens = max_chunk_length - role_overhead - ellipsis_overhead
 
             num_chunks = math.ceil(len(content_tokens) / max_content_tokens)
             for j, start in enumerate(range(0, len(content_tokens), max_content_tokens)):
@@ -63,9 +58,6 @@ def _split_messages_by_tokens(tokenizer: PreTrainedTokenizerFast, session: Sessi
 
 def _create_token_bounded_chunks(tokenizer: PreTrainedTokenizerFast, messages: list[dict], max_chunk_length: int, max_chunk_overlap: int) -> list[str]:
     """Create chunks that respect max_chunk_length and max_chunk_overlap in tokens."""
-    metadata_tokens = len(tokenizer.encode(SEARCH_PREFIX))
-    available_tokens = max_chunk_length - metadata_tokens
-
     chunks = []
     current_messages = []
     current_token_count = 0
@@ -77,7 +69,7 @@ def _create_token_bounded_chunks(tokenizer: PreTrainedTokenizerFast, messages: l
         formatted = _format_message(message)
         msg_tokens = len(tokenizer.encode(formatted + "\n"))
 
-        if current_token_count + msg_tokens <= available_tokens:
+        if current_token_count + msg_tokens <= max_chunk_length:
             current_messages.append(message)
             current_token_count += msg_tokens
         else:

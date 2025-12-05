@@ -40,7 +40,7 @@ def run_experiment(
         database
     )
     judge = JudgeAgent(judge_model_name) if judge_model_name else None
-
+    limit = limit if limit else len(dataset)
     for instance in dataset[:limit]:
         result_file = f"{results_dir}/{instance.question_id}.json"
 

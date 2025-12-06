@@ -10,7 +10,7 @@ load_dotenv()
 run_experiment(
     model_name="ollama/gemma3:4b",
     embeddings_model_name="google/embeddinggemma-300m",
-    judge_model_name="ollama/gemma3:4b",
+    judge_model_name="openai/gpt-5-nano",  # TODO: change to mini later on
     save_chunk_policy=SlidingWindowSaveChunkPolicy(256, 64),
     search_chunks_policy=RerankSearchChunkPolicy("BAAI/bge-reranker-v2-m3"),
     database=FaissDatabase(768),

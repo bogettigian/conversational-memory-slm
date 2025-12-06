@@ -10,3 +10,4 @@ logs/
 aws.pem
 .DS_Store
 plots/
+results/

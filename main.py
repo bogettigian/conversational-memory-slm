@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 
 from src.database.faiss_database import FaissDatabase
 from src.experiment import run_experiment
+from src.policies.role_classifier import UserRoleClassifier
 from src.policies.save_chunk_policy import SlidingWindowSaveChunkPolicy
 from src.policies.search_chunks_policy import RerankSearchChunkPolicy
 
@@ -12,7 +13,8 @@ run_experiment(
     embeddings_model_name="google/embeddinggemma-300m",
     judge_model_name="openai/gpt-5-nano",  # TODO: change to mini later on
     save_chunk_policy=SlidingWindowSaveChunkPolicy(256, 64),
-    search_chunks_policy=RerankSearchChunkPolicy("BAAI/bge-reranker-v2-m3", 4),
+    search_chunks_policy=RerankSearchChunkPolicy("BAAI/bge-reranker-v2-m3", 6),
+    role_classifier=UserRoleClassifier(),
     database=FaissDatabase(768),
     dataset_type="short",
     dataset_set="longmemeval",

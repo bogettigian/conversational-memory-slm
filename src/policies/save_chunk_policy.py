@@ -1,6 +1,4 @@
-import math
 from abc import ABC, abstractmethod
-from collections import deque
 
 from litellm import completion
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -15,81 +13,41 @@ def _format_message(message: dict) -> str:
     return f"{role}: {content}"
 
 
-def _format_chunk(messages: list[dict]) -> str:
-    dialogue_lines = [_format_message(msg) for msg in messages]
-    return "\n".join(dialogue_lines)
+def _split_messages_by_tokens(
+    tokenizer: PreTrainedTokenizerFast,
+    session: Session,
+    max_chunk_length: int,
+    max_chunk_overlap: int,
+) -> list[dict]:
+    """Split messages that exceed the max token budget for a single chunk.
 
-
-def _split_messages_by_tokens(tokenizer: PreTrainedTokenizerFast, session: Session, max_chunk_length: int) -> list[dict]:
-    """Split messages that exceed the max token budget for a single chunk."""
+    When a turn needs to be broken into multiple chunks, consecutive chunks will
+    overlap by up to ``max_chunk_overlap`` tokens to retain local continuity.
+    """
     split_messages = []
     for message in session.messages:
         formatted = _format_message(message)
         tokens = tokenizer.encode(formatted)
 
         if len(tokens) <= max_chunk_length:
-            split_messages.append(message)
+            split_messages.append({"role": message["role"], "content": formatted})
         else:
-            # Split long message into smaller messages that fit in the chunk size
-            role = message["role"].capitalize()
-            content = message["content"]
-            content_tokens = tokenizer.encode(content)
+            step = max_chunk_length - max_chunk_overlap
+            if step <= 0:
+                raise ValueError(
+                    "max_chunk_overlap must be smaller than max_chunk_length"
+                )
 
-            role_overhead = len(tokenizer.encode(f"{role}: "))
-            ellipsis_overhead = len(tokenizer.encode("..."))
-            max_content_tokens = max_chunk_length - role_overhead - ellipsis_overhead
-
-            num_chunks = math.ceil(len(content_tokens) / max_content_tokens)
-            for j, start in enumerate(range(0, len(content_tokens), max_content_tokens)):
-                chunk_tokens = content_tokens[start: start + max_content_tokens]
-                chunk_content = tokenizer.decode(chunk_tokens)
-
-                # Add ellipsis for split messages
-                is_first = (j == 0)
-                is_last = (j == num_chunks - 1)
-                if not is_first:
-                    chunk_content = "..." + chunk_content
-                if not is_last:
-                    chunk_content = chunk_content + "..."
-
-                split_messages.append({"role": role, "content": chunk_content})
+            for start in range(0, len(tokens), step):
+                end = min(start + max_chunk_length, len(tokens))
+                chunk_tokens = tokens[start:end]
+                chunk_text = tokenizer.decode(chunk_tokens)
+                if start > 0:
+                    chunk_text = "..." + chunk_text
+                if end < len(tokens):
+                    chunk_text = chunk_text + "..."
+                split_messages.append({"role": message["role"], "content": chunk_text})
     return split_messages
-
-
-def _create_token_bounded_chunks(tokenizer: PreTrainedTokenizerFast, messages: list[dict], max_chunk_length: int, max_chunk_overlap: int) -> list[str]:
-    """Create chunks that respect max_chunk_length and max_chunk_overlap in tokens."""
-    chunks = []
-    current_messages = []
-    current_token_count = 0
-
-    overlap_window = deque()
-    overlap_token_count = 0
-
-    for message in messages:
-        formatted = _format_message(message)
-        msg_tokens = len(tokenizer.encode(formatted + "\n"))
-
-        if current_token_count + msg_tokens <= max_chunk_length:
-            current_messages.append(message)
-            current_token_count += msg_tokens
-        else:
-            if current_messages:
-                chunks.append(_format_chunk(current_messages))
-
-            current_messages = [msg for msg, _ in overlap_window] + [message]
-            current_token_count = overlap_token_count + msg_tokens
-
-        overlap_window.append((message, msg_tokens))
-        overlap_token_count += msg_tokens
-
-        while overlap_token_count > max_chunk_overlap and overlap_window:
-            _, removed_tokens = overlap_window.popleft()
-            overlap_token_count -= removed_tokens
-
-    if current_messages:
-        chunks.append(_format_chunk(current_messages))
-
-    return chunks
 
 
 class SaveChunkPolicy(ABC):
@@ -97,64 +55,82 @@ class SaveChunkPolicy(ABC):
 
     @abstractmethod
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
-        """Partition the session history into chunks, so we can later embed them and save them in the database.
-        """
+        """Partition the session history into chunks, so we can later embed them and save them in the database."""
         pass
 
 
 class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
-    """Join messages into chunks that fit in the max chunk length and max chunk overlap.
-    
-    If it contains a message that exceeds the max chunk length, it will be split into smaller messages that fit in the chunk size."""
+    """Chunk the conversation with a sliding window respecting the token budget.
+
+    Each chunk contains at most one full turn (user or assistant). A turn is
+    only broken into multiple chunks if it individually exceeds the maximum
+    chunk length."""
+
     name = "sliding_window"
 
     def __init__(self, max_chunk_length: int, max_chunk_overlap: int):
         self.max_chunk_length = max_chunk_length
         self.max_chunk_overlap = max_chunk_overlap
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []
         metadata = []
 
         for session in session_history:
-            split_messages = _split_messages_by_tokens(self.tokenizer, session, self.max_chunk_length)
-            session_chunks = _create_token_bounded_chunks(self.tokenizer, split_messages, self.max_chunk_length, self.max_chunk_overlap)
-            chunks.extend(session_chunks)
-            metadata.extend([{"date": session.date}] * len(session_chunks))
+            split_messages = _split_messages_by_tokens(
+                self.tokenizer, session, self.max_chunk_length, self.max_chunk_overlap
+            )
+            chunks.extend([message["content"] for message in split_messages])
+            metadata.extend(
+                [
+                    {"date": session.date, "role": message["role"].lower()}
+                    for message in split_messages
+                ]
+            )
 
         return chunks, metadata
 
 
 class ContextualSlidingWindowSaveChunkPolicy(SaveChunkPolicy):
-    """Join messages into chunks that fit in the max chunk length and max chunk overlap.
+    """Chunk the conversation with a sliding window respecting the token budget.
 
-    If it contains a message that exceeds the max chunk length, it will be split into smaller messages that fit in the chunk size."""
+    Each chunk contains at most one full turn (user or assistant). A turn is
+    only broken into multiple chunks if it individually exceeds the maximum
+    chunk length."""
+
     name = "contextual_sliding_window"
 
-    def __init__(self, contextual_model_name: str, max_chunk_length: int, max_chunk_overlap: int):
+    def __init__(
+        self, contextual_model_name: str, max_chunk_length: int, max_chunk_overlap: int
+    ):
         self.contextual_model_name = contextual_model_name
         self.max_chunk_length = max_chunk_length
         self.max_chunk_overlap = max_chunk_overlap
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []
         metadata = []
 
         for session in session_history:
-            split_messages = _split_messages_by_tokens(self.tokenizer, session, self.max_chunk_length)
-            session_chunks = _create_token_bounded_chunks(self.tokenizer, split_messages, self.max_chunk_length, self.max_chunk_overlap)
-            metadata.extend([{"date": session.date}] * len(session_chunks))
+            split_messages = _split_messages_by_tokens(
+                self.tokenizer, session, self.max_chunk_length, self.max_chunk_overlap
+            )
+            metadata.extend(
+                [
+                    {"date": session.date, "role": message["role"].lower()}
+                    for message in split_messages
+                ]
+            )
 
             contextual_session_chunks = []
-            for chunk in session_chunks:
-                if chunk.startswith("search_document: "):
-                    chunk = chunk[len("search_document: "):]
-
-                prompt = get_contextual_prompt(session, chunk)
+            for message in split_messages:
+                prompt = get_contextual_prompt(session, message["content"])
                 response = completion(model=self.contextual_model_name, messages=prompt)
-                contextual_session_chunks.append(f"{response.choices[0].message.content.strip()} {chunk}")
+                contextual_session_chunks.append(
+                    f"{response.choices[0].message.content.strip()} {message['content']}"
+                )
 
             chunks.extend(contextual_session_chunks)
 

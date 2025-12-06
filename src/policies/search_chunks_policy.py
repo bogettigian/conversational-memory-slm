@@ -56,7 +56,7 @@ class SearchChunksPolicy(ABC):
 
     @abstractmethod
     def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase,
-              dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
+              dataset_instance: LongMemEvalInstance, role: str) -> tuple[list[str], list[dict[str, str]]]:
         pass
 
 
@@ -67,8 +67,9 @@ class SimpleSearchChunkPolicy(SearchChunksPolicy):
         self.k = k
         self.threshold = threshold
 
-    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
-        chunks, metadata = database.search(embedding_matrix, k=self.k, threshold=self.threshold)
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance,
+              role: str) -> tuple[list[str], list[dict[str, str]]]:
+        chunks, metadata = database.search(embedding_matrix, role=role, k=self.k, threshold=self.threshold)
         return chunks, metadata
 
 
@@ -80,8 +81,9 @@ class TimePruningSearchChunkPolicy(SearchChunksPolicy):
         self.k = k
         self.threshold = threshold
 
-    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        chunks, metadata = database.search(embedding_matrix, k=self.k * 2, threshold=self.threshold)
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance,
+              role: str) -> list[str]:
+        chunks, metadata = database.search(embedding_matrix, role=role, k=self.k * 2, threshold=self.threshold)
         if not chunks:
             return []
 
@@ -100,8 +102,9 @@ class RerankSearchChunkPolicy(SearchChunksPolicy):
         self.k = k
         self.threshold = threshold
 
-    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        chunks, metadata = database.search(embedding_matrix, k=self.k * 10, threshold=self.threshold)
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance,
+              role: str) -> list[str]:
+        chunks, metadata = database.search(embedding_matrix, role=role, k=self.k * 10, threshold=self.threshold)
         if not chunks:
             return []
 
@@ -117,8 +120,9 @@ class RerankTimePruningSearchChunkPolicy(SearchChunksPolicy):
         self.k = k
         self.threshold = threshold
 
-    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance) -> list[str]:
-        chunks, metadata = database.search(embedding_matrix, k=self.k * 10, threshold=self.threshold)
+    def apply(self, embedding_matrix: np.ndarray[np.float32], database: FaissDatabase, dataset_instance: LongMemEvalInstance,
+              role: str) -> list[str]:
+        chunks, metadata = database.search(embedding_matrix, role=role, k=self.k * 10, threshold=self.threshold)
         if not chunks:
             return []
 

@@ -18,42 +18,80 @@ class FaissDatabase:
             dimension: The dimensionality of the embedding vectors.
         """
         self.dimension = dimension
-        self.index = faiss.IndexFlatIP(dimension)
-        self.chunks: list[str] = []
-        self.metadata: list[dict] = []
+        self.index_user = faiss.IndexFlatIP(dimension)
+        self.index_assistant = faiss.IndexFlatIP(dimension)
+        self.chunks_user: list[str] = []
+        self.metadata_user: list[dict] = []
+        self.chunks_assistant: list[str] = []
+        self.metadata_assistant: list[dict] = []
 
-    def insert_embeddings(self, embeddings_matrix: np.ndarray[np.float32], chunks: list[str], metadata: list[dict]) -> None:
+    def _get_store(self, role: str):
+        normalized_role = role.lower()
+        if normalized_role == "user":
+            return self.index_user, self.chunks_user, self.metadata_user
+        if normalized_role == "assistant":
+            return self.index_assistant, self.chunks_assistant, self.metadata_assistant
+        raise ValueError("role must be 'user' or 'assistant'")
+
+    def insert_embeddings(
+            self,
+            embeddings_matrix: np.ndarray[np.float32],
+            chunks: list[str],
+            metadata: list[dict],
+    ) -> None:
         """
         Insert embeddings and their associated chunks into the database.
 
         Args:
             embeddings_matrix: Matrix of float32 embedding vectors.
             chunks: List of chunk strings corresponding to each embedding.
+            metadata: List of metadata dictionaries corresponding to each embedding.
         """
-        faiss.normalize_L2(embeddings_matrix)
-        self.index.add(embeddings_matrix)
-        normalized_chunks = []
-        for chunk in chunks:
-            if chunk.startswith("search_document: "):
-                normalized_chunks.append(chunk[len("search_document: "):])
-            else:
-                normalized_chunks.append(chunk)
-        self.chunks.extend(normalized_chunks)
-        self.metadata.extend(metadata)
+        if embeddings_matrix.shape[0] != len(chunks) or len(chunks) != len(metadata):
+            raise ValueError("embeddings_matrix, chunks, and metadata must have the same length")
 
-    def search(self, query: np.ndarray[np.float32], k: int = 5, threshold: float = 0.6) -> tuple[list[str], list[dict]]:
+        roles = [meta["role"] for meta in metadata]
+
+        grouped_embeddings = {"user": [], "assistant": []}
+        grouped_chunks = {"user": [], "assistant": []}
+        grouped_metadata = {"user": [], "assistant": []}
+
+        for embedding, chunk, meta, role in zip(embeddings_matrix, chunks, metadata, roles):
+            normalized_chunk = chunk[len("search_document: "):] if chunk.startswith("search_document: ") else chunk
+            if role not in grouped_embeddings:
+                raise ValueError("role must be 'user' or 'assistant'")
+
+            grouped_embeddings[role].append(embedding.astype(np.float32))
+            grouped_chunks[role].append(normalized_chunk)
+            grouped_metadata[role].append(meta)
+
+        for role in ("user", "assistant"):
+            if not grouped_embeddings[role]:
+                continue
+
+            embeddings_batch = np.vstack(grouped_embeddings[role]).astype(np.float32)
+            faiss.normalize_L2(embeddings_batch)
+            index, chunk_store, metadata_store = self._get_store(role)
+
+            index.add(embeddings_batch)
+            chunk_store.extend(grouped_chunks[role])
+            metadata_store.extend(grouped_metadata[role])
+
+    def search(self, query: np.ndarray[np.float32], role: str, k: int = 5, threshold: float = 0.6) -> tuple[list[str], list[dict]]:
         """
         Search for the k most similar chunks to the query embedding.
 
         Args:
+            role: Which index to search. Accepted values: 'user' or 'assistant'.
             query: The float32 query vector to search for.
             k: Number of nearest neighbors to return.
 
         Returns:
             Tuple of (list of chunk strings, list of metadata) for the k most similar chunks that have cosine similarity greater than or equal to threshold.
         """
-        if self.index.ntotal == 0:
-            return []
+        index, chunks, metadata_store = self._get_store(role)
+        if index.ntotal == 0:
+            return [], []
 
         # Validate query is 2D float32 array with shape (1, dimension)
         if query.ndim != 2 or query.shape[0] != 1:
@@ -62,28 +100,31 @@ class FaissDatabase:
         faiss.normalize_L2(query)
 
         # Limit k to available vectors
-        k = min(k, self.index.ntotal)
+        k = min(k, index.ntotal)
 
         # Search returns cosine similarities and indices
-        similarities, indices = self.index.search(query, k)
+        similarities, indices = index.search(query, k)
 
         # Retrieve corresponding chunks if cosine similarity is greater than or equal to threshold
         results = []
-        metadata = []
+        returned_metadata = []
         for i, idx in enumerate(indices[0]):
             if idx >= 0 and similarities[0][i] >= threshold:  # FAISS returns index=-1 for unfilled slots
-                results.append(self.chunks[idx])
-                metadata.append(self.metadata[idx])
+                results.append(chunks[idx])
+                returned_metadata.append(metadata_store[idx])
 
-        return results, metadata
+        return results, returned_metadata
 
     @property
     def total_vectors(self) -> int:
         """Return the total number of vectors in the index."""
-        return self.index.ntotal
+        return self.index_user.ntotal + self.index_assistant.ntotal
 
     def clear(self) -> None:
         """Clear all vectors and chunks from the database."""
-        self.index = faiss.IndexFlatIP(self.dimension)
-        self.chunks = []
-        self.metadata = []
+        self.index_user = faiss.IndexFlatIP(self.dimension)
+        self.index_assistant = faiss.IndexFlatIP(self.dimension)
+        self.chunks_user = []
+        self.metadata_user = []
+        self.chunks_assistant = []
+        self.metadata_assistant = []

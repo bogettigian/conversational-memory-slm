@@ -23,7 +23,7 @@ def run_experiment(
         database: FaissDatabase,
         dataset_type: str,
         dataset_set: str,
-        limit: int = 0,
+        limit: int | None = None,
         top_k: int = 5,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)

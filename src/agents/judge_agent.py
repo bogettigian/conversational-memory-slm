@@ -18,4 +18,4 @@ class JudgeAgent:
         messages = [{"role": "user", "content": prompt}]
         response = completion(model=self.judge_model_name, messages=messages)
         judgment = response.choices[0].message.content
-        return eval(judgment)
+        return judgment.lower() == "true"

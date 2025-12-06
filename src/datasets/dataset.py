@@ -36,7 +36,7 @@ class LongMemEvalDataset:
         if type not in ["oracle", "short"]:
             raise ValueError(f"Invalid dataset type: {type}. Must be 'oracle' or 'short'")
 
-        if set not in ["longmemeval", "investigathon_evaluation", "investigathon_held_out"]:
+        if set not in ["longmemeval", "investigathon_evaluation", "investigathon_held_out", "wrong"]:
             raise ValueError(
                 f"Invalid dataset set: {set}. Must be 'longmemeval' or 'investigathon_evaluation' or 'investigathon_held_out'"
             )
@@ -55,6 +55,8 @@ class LongMemEvalDataset:
             if type != "short":
                 raise ValueError(f"Invalid dataset type: {type} for held-out set. Must be 'short'")
             path = "data/investigathon/Investigathon_LLMTrack_HeldOut_s_cleaned.json"
+        elif set == "wrong":
+            path = "data/wrong_questions.json"
         else:
             raise ValueError(
                 f"Invalid dataset set: {set}. Must be 'longmemeval' or 'investigathon_evaluation' or 'investigathon_held_out'"

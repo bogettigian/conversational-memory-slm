@@ -12,7 +12,7 @@ run_experiment(
     embeddings_model_name="google/embeddinggemma-300m",
     judge_model_name="openai/gpt-5-nano",  # TODO: change to mini later on
     save_chunk_policy=SlidingWindowSaveChunkPolicy(256, 64),
-    search_chunks_policy=RerankSearchChunkPolicy("BAAI/bge-reranker-v2-m3"),
+    search_chunks_policy=RerankSearchChunkPolicy("BAAI/bge-reranker-v2-m3", 4),
     database=FaissDatabase(768),
     dataset_type="short",
     dataset_set="longmemeval",

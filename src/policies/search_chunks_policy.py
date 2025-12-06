@@ -95,7 +95,7 @@ class TimePruningSearchChunkPolicy(SearchChunksPolicy):
 class RerankSearchChunkPolicy(SearchChunksPolicy):
     name = "rerank_search"
 
-    def __init__(self, reranker_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2", k: int = 3, threshold: float = 0.3):
+    def __init__(self, reranker_model: str, k: int, threshold: float = 0.3):
         self.reranker = CrossEncoder(reranker_model)
         self.k = k
         self.threshold = threshold
@@ -111,7 +111,7 @@ class RerankSearchChunkPolicy(SearchChunksPolicy):
 class RerankTimePruningSearchChunkPolicy(SearchChunksPolicy):
     name = "rerank_time_pruning_search"
 
-    def __init__(self, date_model_name: str, reranker_model_name: str, k: int = 3, threshold: float = 0.3):
+    def __init__(self, date_model_name: str, reranker_model_name: str, k: int, threshold: float = 0.3):
         self.date_model_name = date_model_name
         self.reranker = CrossEncoder(reranker_model_name)
         self.k = k

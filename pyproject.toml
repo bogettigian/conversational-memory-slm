@@ -16,4 +16,5 @@ dependencies = [
     "numpy",
     "transformers",
     "sentence-transformers",
+    "matplotlib",
 ]

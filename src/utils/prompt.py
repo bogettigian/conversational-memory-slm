@@ -122,6 +122,7 @@ def get_prompt(instance: LongMemEvalInstance, chunks: list[str], metadata: list[
 
     question = instance.question
     prompt = COT_PROMPT % (question, _format_date(question_date), previous_conversations, question)
+    print(prompt)
     return [{"role": "user", "content": prompt}]
 
 

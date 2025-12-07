@@ -66,8 +66,6 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
     only broken into multiple chunks if it individually exceeds the maximum
     chunk length."""
 
-    name = "sliding_window"
-
     def __init__(
         self,
         max_chunk_length: int,
@@ -77,6 +75,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
         self.max_chunk_length = max_chunk_length
         self.max_chunk_overlap = max_chunk_overlap
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name, trust_remote_code=True)
+        self.name = f"sliding_window_{tokenizer_model_name.replace('/', '_')}_{max_chunk_length}_{max_chunk_overlap}"
 
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []
@@ -104,8 +103,6 @@ class ContextualSlidingWindowSaveChunkPolicy(SaveChunkPolicy):
     only broken into multiple chunks if it individually exceeds the maximum
     chunk length."""
 
-    name = "contextual_sliding_window"
-
     def __init__(
         self,
         contextual_model_name: str,
@@ -117,6 +114,7 @@ class ContextualSlidingWindowSaveChunkPolicy(SaveChunkPolicy):
         self.max_chunk_length = max_chunk_length
         self.max_chunk_overlap = max_chunk_overlap
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name, trust_remote_code=True)
+        self.name = f"contextual_sliding_window_{contextual_model_name.replace('/', '_')}_{tokenizer_model_name.replace('/', '_')}_{max_chunk_length}_{max_chunk_overlap}"
 
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []

@@ -8,6 +8,7 @@ from sentence_transformers import CrossEncoder
 
 from src.database.faiss_database import FaissDatabase
 from src.datasets.dataset import LongMemEvalInstance
+from src.policies.role_classifier import RoleClassifier
 from src.utils.prompt import get_date_prompt
 
 
@@ -77,25 +78,42 @@ class SearchChunksPolicy(ABC):
         embedding_matrix: np.ndarray[np.float32],
         database: FaissDatabase,
         dataset_instance: LongMemEvalInstance,
-        role: str,
     ) -> tuple[list[str], list[dict[str, str]]]:
         pass
 
 
 class SimpleSearchChunkPolicy(SearchChunksPolicy):
-    name = "simple_search"
-
-    def __init__(self, k: int = 5, threshold: float = 0.6):
+    def __init__(self, k: int, threshold: float):
         self.k = k
         self.threshold = threshold
+        self.name = f"simple_search_{k}_{threshold}"
 
     def apply(
         self,
         embedding_matrix: np.ndarray[np.float32],
         database: FaissDatabase,
-        dataset_instance: LongMemEvalInstance,
-        role: str,
+        dataset_instance: LongMemEvalInstance
     ) -> tuple[list[str], list[dict[str, str]]]:
+        chunks, metadata = database.search(
+            embedding_matrix, k=self.k, threshold=self.threshold
+        )
+        return chunks, metadata
+
+
+class SimpleRoleSearchChunkPolicy(SearchChunksPolicy):
+    def __init__(self, role_policy: RoleClassifier, k: int, threshold: float):
+        self.k = k
+        self.threshold = threshold
+        self.role_policy = role_policy
+        self.name = f"simple_role_search_{role_policy.name}_{k}_{threshold}"
+
+    def apply(
+        self,
+        embedding_matrix: np.ndarray[np.float32],
+        database: FaissDatabase,
+        dataset_instance: LongMemEvalInstance
+    ) -> tuple[list[str], list[dict[str, str]]]:
+        role = self.role_policy.classify(dataset_instance.question)
         chunks, metadata = database.search(
             embedding_matrix, role=role, k=self.k, threshold=self.threshold
         )
@@ -103,20 +121,46 @@ class SimpleSearchChunkPolicy(SearchChunksPolicy):
 
 
 class TimePruningSearchChunkPolicy(SearchChunksPolicy):
-    name = "time_pruning_search"
-
-    def __init__(self, date_model_name: str, k: int = 5, threshold: float = 0.3):
+    def __init__(self, date_model_name: str, k: int, threshold: float):
         self.date_model_name = date_model_name
         self.k = k
         self.threshold = threshold
+        self.name = f"time_pruning_search_{date_model_name.replace('/', '_')}_{k}_{threshold}"
 
     def apply(
         self,
         embedding_matrix: np.ndarray[np.float32],
         database: FaissDatabase,
-        dataset_instance: LongMemEvalInstance,
-        role: str,
+        dataset_instance: LongMemEvalInstance
     ) -> tuple[list[str], list[dict[str, str]]]:
+        chunks, metadata = database.search(
+            embedding_matrix, k=self.k * 2, threshold=self.threshold
+        )
+        if not chunks:
+            return [], []
+
+        time_range = _generate_time_range(self.date_model_name, dataset_instance)
+        if not time_range:
+            return chunks[: self.k], metadata[: self.k]
+
+        return _time_pruning(chunks, metadata, time_range[0], time_range[1], self.k)
+
+
+class TimePruningRoleSearchChunkPolicy(SearchChunksPolicy):
+    def __init__(self, date_model_name: str, role_policy: RoleClassifier, k: int, threshold: float):
+        self.date_model_name = date_model_name
+        self.k = k
+        self.threshold = threshold
+        self.role_policy = role_policy
+        self.name = f"time_pruning_role_search_{date_model_name.replace('/', '_')}_{role_policy.name}_{k}_{threshold}"
+
+    def apply(
+        self,
+        embedding_matrix: np.ndarray[np.float32],
+        database: FaissDatabase,
+        dataset_instance: LongMemEvalInstance
+    ) -> tuple[list[str], list[dict[str, str]]]:
+        role = self.role_policy.classify(dataset_instance.question)
         chunks, metadata = database.search(
             embedding_matrix, role=role, k=self.k * 2, threshold=self.threshold
         )
@@ -131,20 +175,44 @@ class TimePruningSearchChunkPolicy(SearchChunksPolicy):
 
 
 class RerankSearchChunkPolicy(SearchChunksPolicy):
-    name = "rerank_search"
-
-    def __init__(self, reranker_model: str, k: int, threshold: float = 0.3):
+    def __init__(self, reranker_model: str, k: int, threshold: float):
         self.reranker = CrossEncoder(reranker_model)
         self.k = k
         self.threshold = threshold
+        self.name = f"rerank_search_{reranker_model.replace('/', '_')}_{k}_{threshold}"
 
     def apply(
         self,
         embedding_matrix: np.ndarray[np.float32],
         database: FaissDatabase,
         dataset_instance: LongMemEvalInstance,
-        role: str,
     ) -> tuple[list[str], list[dict[str, str]]]:
+        chunks, metadata = database.search(
+            embedding_matrix, k=self.k * 10, threshold=self.threshold
+        )
+        if not chunks:
+            return [], []
+
+        return _rerank_chunks(
+            self.reranker, dataset_instance.question, chunks, metadata, k=self.k
+        )
+
+
+class RerankRoleSearchChunkPolicy(SearchChunksPolicy):
+    def __init__(self, reranker_model_name: str, role_policy: RoleClassifier, k: int, threshold: float):
+        self.reranker = CrossEncoder(reranker_model_name)
+        self.k = k
+        self.threshold = threshold
+        self.role_policy = role_policy
+        self.name = f"rerank_role_search_{reranker_model_name.replace('/', '_')}_{role_policy.name}_{k}_{threshold}"
+
+    def apply(
+        self,
+        embedding_matrix: np.ndarray[np.float32],
+        database: FaissDatabase,
+        dataset_instance: LongMemEvalInstance,
+    ) -> tuple[list[str], list[dict[str, str]]]:
+        role = self.role_policy.classify(dataset_instance.question)
         chunks, metadata = database.search(
             embedding_matrix, role=role, k=self.k * 10, threshold=self.threshold
         )
@@ -157,27 +225,68 @@ class RerankSearchChunkPolicy(SearchChunksPolicy):
 
 
 class RerankTimePruningSearchChunkPolicy(SearchChunksPolicy):
-    name = "rerank_time_pruning_search"
-
     def __init__(
         self,
         date_model_name: str,
         reranker_model_name: str,
         k: int,
-        threshold: float = 0.3,
+        threshold: float,
     ):
         self.date_model_name = date_model_name
         self.reranker = CrossEncoder(reranker_model_name)
         self.k = k
         self.threshold = threshold
+        self.name = f"rerank_time_pruning_search_{date_model_name.replace('/', '_')}_{reranker_model_name.replace('/', '_')}_{k}_{threshold}"
 
     def apply(
         self,
         embedding_matrix: np.ndarray[np.float32],
         database: FaissDatabase,
-        dataset_instance: LongMemEvalInstance,
-        role: str,
+        dataset_instance: LongMemEvalInstance
     ) -> tuple[list[str], list[dict[str, str]]]:
+        chunks, metadata = database.search(
+            embedding_matrix, k=self.k * 10, threshold=self.threshold
+        )
+        if not chunks:
+            return [], []
+
+        time_range = _generate_time_range(self.date_model_name, dataset_instance)
+        if not time_range:
+            return _rerank_chunks(
+                self.reranker, dataset_instance.question, chunks, metadata, k=self.k
+            )
+
+        pruned_chunks, metadata = _time_pruning(
+            chunks, metadata, time_range[0], time_range[1], self.k * 10
+        )
+        return _rerank_chunks(
+            self.reranker, dataset_instance.question, pruned_chunks, metadata, k=self.k
+        )
+
+
+class RerankTimePruningRoleSearchChunkPolicy(SearchChunksPolicy):
+    def __init__(
+        self,
+        date_model_name: str,
+        reranker_model_name: str,
+        role_policy: RoleClassifier,
+        k: int,
+        threshold: float,
+    ):
+        self.date_model_name = date_model_name
+        self.reranker = CrossEncoder(reranker_model_name)
+        self.k = k
+        self.threshold = threshold
+        self.role_policy = role_policy
+        self.name = f"rerank_time_pruning_role_search_{date_model_name.replace('/', '_')}_{reranker_model_name.replace('/', '_')}_{role_policy.name}_{k}_{threshold}"
+
+    def apply(
+        self,
+        embedding_matrix: np.ndarray[np.float32],
+        database: FaissDatabase,
+        dataset_instance: LongMemEvalInstance
+    ) -> tuple[list[str], list[dict[str, str]]]:
+        role = self.role_policy.classify(dataset_instance.question)
         chunks, metadata = database.search(
             embedding_matrix, role=role, k=self.k * 10, threshold=self.threshold
         )

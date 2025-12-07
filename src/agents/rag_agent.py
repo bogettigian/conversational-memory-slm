@@ -37,10 +37,10 @@ class RAGAgent:
         ).astype(np.float32)
         self.db.insert_embeddings(embeddings_matrix, chunks, metadata)
 
-    def retrieve_chunks(self, dataset_instance: LongMemEvalInstance, role: str) -> tuple[list[str], list[dict[str, str]]]:
+    def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
         formatted_question = self._format_query_for_embedding(dataset_instance.question)
         question_embedding = self.embedding_model.encode(
             formatted_question, convert_to_numpy=True
         ).astype(np.float32).reshape(1, -1)
-        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.db, dataset_instance, role)
+        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.db, dataset_instance)
         return chunks, metadata

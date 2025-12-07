@@ -15,7 +15,7 @@ I will give you several history chats between you and a user. Please answer the 
 
 The current date is %s.
 
-# Chats History
+# Messages
 %s
 
 # Question
@@ -36,7 +36,7 @@ I will give you several history chats between you and a user. Please answer the 
 
 The current date is %s.
 
-# Chats History
+# Messages
 %s
 
 # Question
@@ -75,7 +75,7 @@ def get_prompt(instance: LongMemEvalInstance, chunks: list[str], metadata: list[
         sorted_chunks, sorted_metadata = zip(*combined)
 
         previous_conversations = "\n".join(
-            [f'\n### Chat {_format_date(sorted_metadata[i]["date"])}\n\n"""\n{sorted_chunks[i]}\n"""' for i in range(len(sorted_chunks))])
+            [f'\n### Message {_format_date(sorted_metadata[i]["date"])}\n\n{sorted_chunks[i]}\n' for i in range(len(sorted_chunks))])
     else:
         previous_conversations = "\nNo relevant chats history."
 

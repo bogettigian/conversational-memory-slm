@@ -22,7 +22,7 @@ class TextDataset(Dataset):
         return item
 
 
-def main():
+def train():
     dataset = LongMemEvalDataset("oracle", "longmemeval")
 
     question = []
@@ -93,4 +93,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    train()

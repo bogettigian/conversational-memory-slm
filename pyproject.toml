@@ -17,4 +17,5 @@ dependencies = [
     "transformers",
     "sentence-transformers",
     "matplotlib",
+    "accelerate"
 ]

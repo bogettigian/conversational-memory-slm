@@ -15,17 +15,32 @@ class RAGAgent:
             search_chunks_policy: SearchChunksPolicy,
             db: FaissDatabase,
     ):
+        self.embeddings_model_name = embeddings_model_name
         self.embedding_model = SentenceTransformer(embeddings_model_name, trust_remote_code=True)
         self.save_chunk_policy = save_chunk_policy
         self.search_chunks_policy = search_chunks_policy
         self.db = db
 
+    def _format_query_for_embedding(self, content: str) -> str:
+        if "gemma" in self.embeddings_model_name.lower():
+            return f"question answering | query: {content}"
+        return content
+
+    def _format_document_for_embedding(self, content: str) -> str:
+        return content
+
     def save_embeddings(self, session_history: list[Session]) -> None:
         chunks, metadata = self.save_chunk_policy.apply(session_history)
-        embeddings_matrix = self.embedding_model.encode(chunks, convert_to_numpy=True).astype(np.float32)
+        document_texts = [self._format_document_for_embedding(chunk) for chunk in chunks]
+        embeddings_matrix = self.embedding_model.encode(
+            document_texts, convert_to_numpy=True
+        ).astype(np.float32)
         self.db.insert_embeddings(embeddings_matrix, chunks, metadata)
 
-    def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
-        question_embedding = self.embedding_model.encode(dataset_instance.question, convert_to_numpy=True).astype(np.float32).reshape(1, -1)
-        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.db, dataset_instance)
+    def retrieve_chunks(self, dataset_instance: LongMemEvalInstance, role: str) -> tuple[list[str], list[dict[str, str]]]:
+        formatted_question = self._format_query_for_embedding(dataset_instance.question)
+        question_embedding = self.embedding_model.encode(
+            formatted_question, convert_to_numpy=True
+        ).astype(np.float32).reshape(1, -1)
+        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.db, dataset_instance, role)
         return chunks, metadata

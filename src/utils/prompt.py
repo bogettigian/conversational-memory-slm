@@ -15,7 +15,7 @@ I will give you several history chats between you and a user. Please answer the 
 
 The current date is %s.
 
-# Chats History
+# Messages
 %s
 
 # Question
@@ -36,7 +36,7 @@ I will give you several history chats between you and a user. Please answer the 
 
 The current date is %s.
 
-# Chats History
+# Messages
 %s
 
 # Question
@@ -48,11 +48,8 @@ The current date is %s.
 """
 
 
-def _format_date(date_string: str, reference_date: str = None) -> str:
-    """
-    Format date from "2023/03/04 (Sat) 03:50" to "Saturday March 4th 2023"
-
-    If reference_date is provided, add the relative time to the date string. E.g. "Saturday March 4th 2023 (X days/weeks/months/years ago)".
+def _format_date(date_string: str) -> str:
+    """Format date from "2023/03/04 (Sat) 03:50" to "Saturday March 4th 2023"
     """
     # Parse the date string (ignoring time part)
     date_part = date_string.split(' ')[0]  # Get "2023/03/04"
@@ -66,49 +63,11 @@ def _format_date(date_string: str, reference_date: str = None) -> str:
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
     day_with_suffix = f"{day}{suffix}"
 
-    # Format the basic date string
     formatted_date = parsed_date.strftime(f"%A %B {day_with_suffix} %Y")
-
-    # Add relative time if reference_date is provided
-    if reference_date:
-        ref_date_part = reference_date.split(' ')[0]
-        ref_parsed_date = datetime.strptime(ref_date_part, "%Y/%m/%d")
-
-        # Calculate the difference
-        delta = ref_parsed_date - parsed_date
-
-        if delta.days == 0:
-            relative_time = "(today)"
-        elif delta.days == 1:
-            relative_time = "(1 day ago)"
-        elif delta.days < 7:
-            relative_time = f"({delta.days} days ago)"
-        elif delta.days < 30:
-            weeks = delta.days // 7
-            if weeks == 1:
-                relative_time = "(1 week ago)"
-            else:
-                relative_time = f"({weeks} weeks ago)"
-        elif delta.days < 365:
-            months = delta.days // 30
-            if months == 1:
-                relative_time = "(1 month ago)"
-            else:
-                relative_time = f"({months} months ago)"
-        else:
-            years = delta.days // 365
-            if years == 1:
-                relative_time = "(1 year ago)"
-            else:
-                relative_time = f"({years} years ago)"
-
-        formatted_date += f" {relative_time}"
-
     return formatted_date
 
 
 def get_prompt(instance: LongMemEvalInstance, chunks: list[str], metadata: list[dict[str, str]]) -> list[dict[str, str]]:
-    question_date = instance.t_question
     if chunks:
         # Sort chunks chronologically (oldest first) by parsing the date from metadata
         combined = list(zip(chunks, metadata))
@@ -116,12 +75,12 @@ def get_prompt(instance: LongMemEvalInstance, chunks: list[str], metadata: list[
         sorted_chunks, sorted_metadata = zip(*combined)
 
         previous_conversations = "\n".join(
-            [f'\n### Chat {_format_date(sorted_metadata[i]["date"], question_date)}\n\n"""\n{sorted_chunks[i]}\n"""' for i in range(len(sorted_chunks))])
+            [f'\n### Message {_format_date(sorted_metadata[i]["date"])}\n\n{sorted_chunks[i]}\n' for i in range(len(sorted_chunks))])
     else:
         previous_conversations = "\nNo relevant chats history."
 
     question = instance.question
-    prompt = COT_PROMPT % (question, _format_date(question_date), previous_conversations, question)
+    prompt = COT_PROMPT % (question, _format_date(instance.t_question), previous_conversations, question)
     print(prompt)
     return [{"role": "user", "content": prompt}]
 

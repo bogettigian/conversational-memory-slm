@@ -8,6 +8,7 @@ from src.agents.judge_agent import JudgeAgent
 from src.agents.rag_agent import RAGAgent
 from src.database.faiss_database import FaissDatabase
 from src.datasets.dataset import LongMemEvalDataset
+from src.policies.role_classifier import RoleClassifier
 from src.policies.save_chunk_policy import SaveChunkPolicy
 from src.policies.search_chunks_policy import SearchChunksPolicy
 from src.utils.metrics import metric_generator
@@ -21,10 +22,11 @@ def run_experiment(
         save_chunk_policy: SaveChunkPolicy,
         search_chunks_policy: SearchChunksPolicy,
         database: FaissDatabase,
+        role_classifier: RoleClassifier,
         dataset_type: str,
         dataset_set: str,
+        top_k: int,
         limit: int | None = None,
-        top_k: int = 5,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)
     results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}"
@@ -57,7 +59,8 @@ def run_experiment(
         best_result = None
         for attempt in range(1, top_k + 1):
             start_time = time.time()
-            chunks, metadata = rag.retrieve_chunks(instance)
+            role = role_classifier.classify(instance.question)
+            chunks, metadata = rag.retrieve_chunks(instance, role)
             prompt = get_prompt(instance, chunks, metadata)
             response = completion(model=model_name, messages=prompt)
             predicted_answer = response.choices[0].message.content

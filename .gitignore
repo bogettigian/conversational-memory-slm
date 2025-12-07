@@ -10,3 +10,6 @@ logs/
 aws.pem
 .DS_Store
 plots/
+training/
+results/
+models/

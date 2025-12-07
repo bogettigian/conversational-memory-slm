@@ -8,6 +8,7 @@ from scripts.fine_tuned_classification_model import train
 
 
 class RoleClassifier(ABC):
+    name: str
 
     @abstractmethod
     def classify(self, question: str) -> Literal["user", "assistant"]:
@@ -15,12 +16,14 @@ class RoleClassifier(ABC):
 
 
 class UserRoleClassifier(RoleClassifier):
+    name = "user_role_classifier"
 
     def classify(self, question: str) -> Literal["user", "assistant"]:
         return "user"
 
 
 class FineTuningClassifier(RoleClassifier):
+    name = "fine_tuning_classifier"
 
     def __init__(self, model_path: str):
         if not os.path.isdir(model_path):

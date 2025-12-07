@@ -29,7 +29,7 @@ def run_experiment(
         limit: int | None = None,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)
-    results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}"
+    results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}_ROLE_{role_classifier.name}"
     os.makedirs(results_dir, exist_ok=True)
 
     print(f"\nResults will be saved to: {results_dir}")

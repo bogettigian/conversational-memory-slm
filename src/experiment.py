@@ -25,8 +25,8 @@ def run_experiment(
         role_classifier: RoleClassifier,
         dataset_type: str,
         dataset_set: str,
+        top_k: int,
         limit: int | None = None,
-        top_k: int = 5,
 ):
     dataset = LongMemEvalDataset(dataset_type, dataset_set)
     results_dir = f"data/results/{dataset.dataset_set}/{dataset.dataset_type}/EMB_{embeddings_model_name.replace('/', '_')}_MODEL_{model_name.replace('/', '_')}_SAVE_{save_chunk_policy.name}_SEARCH_{search_chunks_policy.name}"

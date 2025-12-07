@@ -20,5 +20,5 @@ run_experiment(
     database=FaissDatabase(768),
     dataset_type="short",
     dataset_set="longmemeval",
-    top_k=5,
+    top_k=3,
 )

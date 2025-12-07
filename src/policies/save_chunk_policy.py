@@ -68,10 +68,15 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
 
     name = "sliding_window"
 
-    def __init__(self, max_chunk_length: int, max_chunk_overlap: int):
+    def __init__(
+        self,
+        max_chunk_length: int,
+        max_chunk_overlap: int,
+        tokenizer_model_name: str,
+    ):
         self.max_chunk_length = max_chunk_length
         self.max_chunk_overlap = max_chunk_overlap
-        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name, trust_remote_code=True)
 
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []
@@ -102,12 +107,16 @@ class ContextualSlidingWindowSaveChunkPolicy(SaveChunkPolicy):
     name = "contextual_sliding_window"
 
     def __init__(
-        self, contextual_model_name: str, max_chunk_length: int, max_chunk_overlap: int
+        self,
+        contextual_model_name: str,
+        max_chunk_length: int,
+        max_chunk_overlap: int,
+        tokenizer_model_name: str,
     ):
         self.contextual_model_name = contextual_model_name
         self.max_chunk_length = max_chunk_length
         self.max_chunk_overlap = max_chunk_overlap
-        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name, trust_remote_code=True)
 
     def apply(self, session_history: list[Session]) -> tuple[list[str], list[dict]]:
         chunks = []

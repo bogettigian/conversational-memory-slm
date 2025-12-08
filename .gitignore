@@ -13,3 +13,77 @@ plots/
 training/
 results/
 models/
+
+# Latex
+*.pdf
+*.pytxcode
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+# Intermediate documents
+*.dvi
+*.xdv
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+
+# SyncTeX
+*.synctex
+*.synctex.gz
+*.synctex(busy)
+
+# LatexMK / build tools
+*.fdb_latexmk
+*.pdfsync
+*.alg
+*.loa
+
+# Beamer
+*.nav
+*.snm
+*.vrb
+
+# MetaPost / PSTricks
+*.mp
+*.mps
+
+# TikZ / PGF
+*.tikz
+*.pgf-plot.tex
+
+# Glossaries / nomenclature
+*.acn
+*.acr
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.ist
+*.nlo
+*.nls
+
+# Biblatex / biber
+*.vrb
+*.bcf
+*.run.xml
+
+# minted (if used)
+_minted*
+*.pyg
+
+# Listings
+*.lol
+
+# Auxiliary images
+*.eps-converted-to.pdf

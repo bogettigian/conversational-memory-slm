@@ -1,0 +1,222 @@
+\documentclass[portrait,paperwidth=84.1cm,paperheight=118.9cm]{baposter}
+
+\usepackage{mathtools}
+\usepackage{calc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{relsize}
+\usepackage{multirow}
+\usepackage{rotating}
+\usepackage{bm}
+\usepackage{url}
+\usepackage{mathpazo}
+\usepackage{multicol}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{listings, skins}
+\usepackage{listings}
+\usepackage{verbatim}
+\usepackage{xcolor}  % Para colores (opcional)
+
+\usepackage{pythontex}
+
+
+%%%%%%%%%%%%%% los puse yo?
+\usepackage{latexsym}
+\usepackage{tikz}
+\usepackage{arydshln}
+\usetikzlibrary{positioning, shapes}
+\usepackage[spanish]{babel}
+\usepackage{enumitem}
+\def\R{{\mathbb {R}}}
+\def\div{\operatorname{\text{div}}}
+\def\N{{\mathbb {N}}}
+\def\A{{\mathcal{A}}}
+%%%%%%%%%%%%%%
+
+
+
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{bookman}
+\usepackage{palatino} % Font
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{orange},
+  showstringspaces=false,
+  frame=single,
+  breaklines=true
+}
+
+\newcommand{\captionfont}{\footnotesize}
+
+\graphicspath{{images/}{../images/}}
+\usetikzlibrary{calc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% Some math symbols used in the text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Multicol Settings
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setlength{\columnsep}{1.5em}
+\setlength{\columnseprule}{0mm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Save space in lists. Use this after the opening of the list
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\compresslist}{%
+\setlength{\itemsep}{1pt}%
+\setlength{\parskip}{0pt}%
+\setlength{\parsep}{0pt}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Begin of Document
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Here starts the poster
+%%%---------------------------------------------------------------------------
+%%% Format it to your taste with the options
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Define some colors
+
+%\definecolor{lightblue}{cmyk}{0.83,0.24,0,0.12}
+\definecolor{lightblue}{rgb}{0.145,0.6666,1}
+\definecolor{rojo}{RGB}{216, 36, 36}
+\definecolor{rojoobscuro}{RGB}{174, 30, 30}
+\definecolor{celeste}{RGB}{71, 148, 227}
+\definecolor{celesteosbscuro}{RGB}{71, 148, 227}
+\definecolor{lila}{rgb}{.6,.5,0.9}
+%%
+\begin{poster}%
+  % Poster Options
+  {
+  % Show grid to help with alignment
+  grid=false,
+  %number of columns
+  columns=2,
+  % Column spacing
+  colspacing=1em,
+  % Color style
+  bgColorOne=white,
+  bgColorTwo=white,
+  borderColor=celesteosbscuro,
+  headerColorOne=black,
+  headerColorTwo=celeste,
+  headerFontColor=white,
+  boxColorOne=white,
+  boxColorTwo=blue, %celeste,
+  % Format of textbox
+  % textborder=roundedleft,
+  textborder=none,
+  % Format of text header
+  eyecatcher=true,
+  % headerborder=closed,
+  headerborder=none,
+  headerheight=0.1\textheight,
+%  textfont=\sc, An example of changing the text font
+  headershape=roundedright,
+  headershade=shadelr,
+  headerfont=\Large\bf\textsc, %Sans Serif
+  textfont={\setlength{\parindent}{1.5em}},
+  boxshade=plain,
+%  background=shade-tb,
+  background=plain,
+  linewidth=2pt
+  }
+  % Logo 1
+  {
+  \includegraphics[width=90 pt]{logo.jpg}
+  }
+  % Title
+  {\textsc{Título del poster}}
+  % Authors
+  {\Large Autor 1 y  Autor 2\\ {\large Estudiantes de xx}}
+  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Now define the boxes that make up the poster
+%%%---------------------------------------------------------------------------
+%%% Each box has a name and can be placed absolutely or relatively.
+%%% The only inconvenience is that you can only specify a relative position
+%%% towards an already declared box. So if you have a box attached to the
+%%% bottom, one to the top and a third one which should be in between, you
+%%% have to specify the top and bottom boxes before you specify the middle
+%%% box.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\headerbox{Introducción}{name=intro,column=0,
+%row=0
+}
+{
+  Este trabajo presenta un sistema de \textit{Retrieval-Augmented Generation} (RAG) para el dataset \textit{LongMemEval}[1] con un modelo de \textit{LLM} de 4B parámetros.
+}
+
+
+
+
+
+\headerbox{Preliminares}{name=prelim,column=0, below=intro
+}{
+En este cuadro describimos los preliminares que se necesitan para poder entender el resto del trabajo
+
+Por ejemplo
+
+Una red neuronal convolucionada se define como xxxxx
+\begin{center}
+\includegraphics[width=0.6\columnwidth]{cnn.png} 
+\end{center}
+}
+
+
+
+\headerbox{Resultado 1}{name=res1,column=0,below=prelim
+}{
+Acá se describe el primer resultado que puede ser un código:
+}
+
+
+\headerbox{Resultado 2}{name=res2,column=1,
+}{
+Presentamos resultados teóricos
+
+\vspace{5 pt}
+{\color{celesteosbscuro}Teorema [Carl Gauss, 1805]}
+Gran teorema de Gauss
+
+}
+
+\headerbox{Gráficos}{name=grafico,column=1, below=res2
+}{
+Acá insertamos los gráficos
+
+}
+
+
+\headerbox{Referencias}{name=ref,column=1, below=grafico
+}{
+
+\vspace{3 pt}
+	
+\begin{enumerate}
+\item P.-L. Lions.{\it Gran resultado} Rev. Mat. Iberoamericana, xxx.
+
+\item C. Gauss. {\it  Sobre la normal.} XXXX
+\end{enumerate}
+}
+
+
+\end{poster}
+
+\end{document}
+

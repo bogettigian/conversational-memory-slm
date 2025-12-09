@@ -116,13 +116,13 @@ class FaissDatabase:
 
         # Retrieve corresponding chunks if cosine similarity is greater than or equal to threshold
         results = []
-        returned_metadata = []
+        results_metadata = []
         for i, idx in enumerate(indices[0]):
             if idx >= 0 and similarities[0][i] >= threshold:  # FAISS returns index=-1 for unfilled slots
                 results.append(chunks[idx])
-                returned_metadata.append(metadata_store[idx])
+                results_metadata.append(metadata_store[idx])
 
-        return results, returned_metadata
+        return results, results_metadata
 
     @property
     def total_vectors(self) -> int:

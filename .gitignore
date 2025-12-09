@@ -13,3 +13,5 @@ plots/
 training/
 results/
 models/
+
+*.props

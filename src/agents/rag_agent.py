@@ -2,6 +2,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from src.database.faiss_database import FaissDatabase
+from src.database.graph_database import GraphDatabase
 from src.datasets.dataset import LongMemEvalInstance, Session
 from src.policies.save_chunk_policy import SaveChunkPolicy
 from src.policies.search_chunks_policy import SearchChunksPolicy
@@ -13,13 +14,15 @@ class RAGAgent:
             embeddings_model_name: str,
             save_chunk_policy: SaveChunkPolicy,
             search_chunks_policy: SearchChunksPolicy,
-            db: FaissDatabase,
+            vector_db: FaissDatabase,
+            graph_db: GraphDatabase | None,
     ):
         self.embeddings_model_name = embeddings_model_name
         self.embedding_model = SentenceTransformer(embeddings_model_name, trust_remote_code=True)
         self.save_chunk_policy = save_chunk_policy
         self.search_chunks_policy = search_chunks_policy
-        self.db = db
+        self.vector_db = vector_db
+        self.graph_db = graph_db
 
     def _format_query_for_embedding(self, content: str) -> str:
         if "gemma" in self.embeddings_model_name.lower():
@@ -35,12 +38,14 @@ class RAGAgent:
         embeddings_matrix = self.embedding_model.encode(
             document_texts, convert_to_numpy=True
         ).astype(np.float32)
-        self.db.insert_embeddings(embeddings_matrix, chunks, metadata)
+        self.vector_db.insert_embeddings(embeddings_matrix, chunks, metadata)
+        if self.graph_db:
+            self.graph_db.insert_nodes(chunks, metadata)
 
     def retrieve_chunks(self, dataset_instance: LongMemEvalInstance) -> tuple[list[str], list[dict[str, str]]]:
         formatted_question = self._format_query_for_embedding(dataset_instance.question)
         question_embedding = self.embedding_model.encode(
             formatted_question, convert_to_numpy=True
         ).astype(np.float32).reshape(1, -1)
-        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.db, dataset_instance)
+        chunks, metadata = self.search_chunks_policy.apply(question_embedding, self.vector_db, dataset_instance, self.graph_db)
         return chunks, metadata

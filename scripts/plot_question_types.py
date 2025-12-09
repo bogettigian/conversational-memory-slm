@@ -207,6 +207,8 @@ def main():
     datasets = {
         "LongMemEval Oracle": project_root / "data/longmemeval/longmemeval_oracle.json",
         "LongMemEval Short": project_root / "data/longmemeval/longmemeval_s_cleaned.json",
+        "Investigathon Oracle": project_root / "data/investigathon/investigathon_LLMTrack_Evaluation_oracle.json",
+        "Investigathon Short": project_root / "data/investigathon/investigathon_LLMTrack_Evaluation_s_cleaned.json",
     }
 
     for name, dataset_path in datasets.items():
@@ -244,9 +246,15 @@ def main():
         if dataset_dir.is_dir():
             for type_dir in dataset_dir.iterdir():
                 if type_dir.is_dir():
-                    for exp_dir in type_dir.iterdir():
-                        if exp_dir.is_dir():
-                            experiment_dirs.append(exp_dir)
+                    for model_exp_dir in type_dir.iterdir():
+                        if model_exp_dir.is_dir():
+                            for emb_exp_dir in model_exp_dir.iterdir():
+                                if emb_exp_dir.is_dir():
+                                    for save_exp_dir in emb_exp_dir.iterdir():
+                                        if save_exp_dir.is_dir():
+                                            for search_exp_dir in save_exp_dir.iterdir():
+                                                if search_exp_dir.is_dir():
+                                                    experiment_dirs.append(search_exp_dir)
 
     if not experiment_dirs:
         print("\nNo experiment results found.")

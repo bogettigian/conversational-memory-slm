@@ -17,5 +17,7 @@ dependencies = [
     "transformers",
     "sentence-transformers",
     "matplotlib",
-    "accelerate"
+    "accelerate",
+    "stanford-openie",
+    "nltk"
 ]

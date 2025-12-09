@@ -1,3 +1,4 @@
+import uuid
 from abc import ABC, abstractmethod
 
 from litellm import completion
@@ -88,7 +89,7 @@ class SlidingWindowSaveChunkPolicy(SaveChunkPolicy):
             chunks.extend([message["content"] for message in split_messages])
             metadata.extend(
                 [
-                    {"date": session.date, "role": message["role"].lower()}
+                    {"date": session.date, "role": message["role"].lower(), "id": str(uuid.uuid4())}
                     for message in split_messages
                 ]
             )
@@ -126,7 +127,7 @@ class ContextualSlidingWindowSaveChunkPolicy(SaveChunkPolicy):
             )
             metadata.extend(
                 [
-                    {"date": session.date, "role": message["role"].lower()}
+                    {"date": session.date, "role": message["role"].lower(), "id": str(uuid.uuid4())}
                     for message in split_messages
                 ]
             )

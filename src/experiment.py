@@ -7,6 +7,7 @@ from litellm import completion
 from src.agents.judge_agent import JudgeAgent
 from src.agents.rag_agent import RAGAgent
 from src.database.faiss_database import FaissDatabase
+from src.database.graph_database import GraphDatabase
 from src.datasets.dataset import LongMemEvalDataset
 from src.policies.save_chunk_policy import SaveChunkPolicy
 from src.policies.search_chunks_policy import SearchChunksPolicy
@@ -20,7 +21,8 @@ def run_experiment(
         judge_model_name: str | None,
         save_chunk_policy: SaveChunkPolicy,
         search_chunks_policy: SearchChunksPolicy,
-        database: FaissDatabase,
+        vector_database: FaissDatabase,
+        graph_database: GraphDatabase | None,
         dataset_type: str,
         dataset_set: str,
         top_k: int,
@@ -42,7 +44,8 @@ def run_experiment(
         embeddings_model_name,
         save_chunk_policy,
         search_chunks_policy,
-        database
+        vector_database,
+        graph_database
     )
     judge = JudgeAgent(judge_model_name) if judge_model_name else None
 
@@ -52,7 +55,9 @@ def run_experiment(
         if os.path.exists(result_file):
             print(f"Skipping {instance.question_id} because it already exists", flush=True)
             continue
-        database.clear()
+        vector_database.clear()
+        if graph_database:
+            graph_database.clear()
 
         start_time = time.time()
         rag.save_embeddings(instance.sessions)

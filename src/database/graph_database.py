@@ -1,9 +1,7 @@
 import uuid
 
 import networkx
-import nltk
 import numpy as np
-from nltk.tokenize import sent_tokenize
 from openie import StanfordOpenIE
 from sentence_transformers import SentenceTransformer
 
@@ -13,8 +11,6 @@ from src.database.faiss_database import FaissDatabase
 class GraphDatabase:
 
     def __init__(self, embeddings_model_name: str, vector_db: FaissDatabase):
-        nltk.download("punkt_tab")
-
         self.graph = networkx.Graph()
         self.embedding_model = SentenceTransformer(embeddings_model_name, trust_remote_code=True)
         self.vector_db = vector_db
@@ -24,10 +20,13 @@ class GraphDatabase:
         result_attr, m_attr = self.vector_db.search(attr_embedding, k=1, threshold=0.95)
         if len(result_attr) == 0:
             attr_id = str(uuid.uuid4())
+            metadata = {"role": "user", "id": attr_id}
             self.graph.add_node(attr_id)
             self.graph.nodes[attr_id]["data"] = attr
             self.graph.nodes[attr_id]["type"] = attr_type
-            self.graph.nodes[attr_id]["metadata"] = {}
+            self.graph.nodes[attr_id]["metadata"] = metadata
+
+            self.vector_db.insert_embeddings(np.array([attr_embedding]), [attr], [metadata])
         else:
             attr_id = m_attr[0]["id"]
         self.graph.add_edge(parent_id, attr_id)
@@ -44,35 +43,22 @@ class GraphDatabase:
                 self.graph.nodes[m["id"]]["type"] = "chunk"
                 self.graph.nodes[m["id"]]["metadata"] = m
 
-                sentences = sent_tokenize(chunk, language="english")
-                for sentence in [s.strip() for s in sentences if s.strip()]:
-                    sentence_id = str(uuid.uuid4())
-                    self.graph.add_node(sentence_id)
-                    self.graph.nodes[sentence_id]["data"] = sentence
-                    self.graph.nodes[sentence_id]["type"] = "sentence"
-                    self.graph.nodes[sentence_id]["metadata"] = {}
-
-                    self.graph.add_edge(m["id"], sentence_id)
-
-                    for extraction in client.annotate(sentence):
-                        self._insert_attr_node(extraction["subject"], sentence_id, "subject")
-                        self._insert_attr_node(extraction["relation"], sentence_id, "relation")
-                        self._insert_attr_node(extraction["object"], sentence_id, "object")
+                for extraction in client.annotate(chunk):
+                    self._insert_attr_node(extraction["subject"], m["id"], "subject")
+                    self._insert_attr_node(extraction["relation"], m["id"], "relation")
+                    self._insert_attr_node(extraction["object"], m["id"], "object")
 
     def search_nodes(self, ids: list[str]) -> tuple[list[str], list[dict[str, str]]]:
         result_ids = []
         result_chunks = []
         result_metadata = []
         for id in ids:
-            for sentence_adj in list(self.graph.adj[id]):
-                for attr_adj in list(self.graph.adj[sentence_adj]):
-                    if self.graph.nodes[attr_adj]["type"] != "chunk":
-                        for adj in list(self.graph.adj[attr_adj]):
-                                for chunk_adj in list(self.graph.adj[adj]):
-                                    if self.graph.nodes[chunk_adj]["type"] == "chunk" and chunk_adj not in result_ids:
-                                        result_ids.append(chunk_adj)
-                                        result_chunks.append(self.graph.nodes[chunk_adj]["data"])
-                                        result_metadata.append(self.graph.nodes[chunk_adj]["metadata"])
+            for attr_adj in list(self.graph.adj[id]):
+                for adj in list(self.graph.adj[attr_adj]):
+                    if self.graph.nodes[adj]["type"] == "chunk" and adj not in result_ids:
+                        result_ids.append(adj)
+                        result_chunks.append(self.graph.nodes[adj]["data"])
+                        result_metadata.append(self.graph.nodes[adj]["metadata"])
         return result_chunks, result_metadata
 
     def clear(self):

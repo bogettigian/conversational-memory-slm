@@ -1,6 +1,0 @@
-Pre:
-    Documents chunking into turns or sliding windows. Calculate sentences of each chunk with NLTK.
-    Graph: connect chunk with its sentences and connect sentences with its k closest sentences.
-
-Post:
-    Find closest 20 embeddings of question or HyDE. Then, using the sentences connected to those c hunks, find all sentences that are one hop away and their parent chunk. Then rerank (chunks+connected chunks) against question/HyDE. Keep top k

@@ -75,12 +75,7 @@ def run_experiment(
             result = {
                 "question_id": instance.question_id,
                 "question": instance.question,
-                "question_type": instance.question_type,
-                "predicted_answer": predicted_answer,
-                "online_latency": online_latency,
-                "offline_latency": offline_latency,
-                "context_length": len(prompt[0]["content"]),
-                "attempts": attempt,
+                "predicted_answer": predicted_answer
             }
 
             print(f"  Attempt {attempt}/{top_k}")
@@ -92,6 +87,12 @@ def run_experiment(
             print(f"  Context length: {len(prompt[0]['content'])}")
 
             if judge:
+                result["question_type"] = instance.question_type
+                result["online_latency"] = online_latency
+                result["offline_latency"] = offline_latency
+                result["context_length"] = len(prompt[0]["content"])
+                result["attempts"] = attempt
+
                 answer_is_correct = judge.judge(instance, predicted_answer)
                 result["answer"] = instance.answer
                 result["answer_is_correct"] = answer_is_correct

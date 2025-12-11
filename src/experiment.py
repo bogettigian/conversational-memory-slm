@@ -112,5 +112,6 @@ def run_experiment(
         with open(result_file, "w", encoding="utf-8") as file:
             json.dump(best_result, file, indent=2)
         print("-" * 100)
-    metric_generator(results_dir)
+    if judge:
+        metric_generator(results_dir)
     print("EVALUATION COMPLETE")

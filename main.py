@@ -157,7 +157,7 @@ role_policy = FineTuningClassifier("./models/fine_tuned_classification_model")
 run_experiment(
     model_name="ollama/gemma3:4b",
     embeddings_model_name=embeddings_model_name,
-    judge_model_name="openai/gpt-5-mini",
+    judge_model_name=None,
     save_chunk_policy=SlidingWindowSaveChunkPolicy(256, 64, embeddings_model_name),
     search_chunks_policy=RerankRoleSearchChunkPolicy("BAAI/bge-reranker-v2-m3", role_policy, 6, 0.3),
     vector_database=FaissDatabase(768),

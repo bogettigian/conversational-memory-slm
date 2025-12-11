@@ -83,7 +83,7 @@ class LongMemEvalDataset:
         return LongMemEvalInstance(
             question_id=row["question_id"],
             question=row["question"],
-            question_type=row["question_type"],
+            question_type=row.get("question_type", "Unknown"),
             sessions=[
                 Session(session_id=session_id, date=date, messages=messages)
                 for session_id, date, messages in zip(

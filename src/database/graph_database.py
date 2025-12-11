@@ -49,14 +49,15 @@ class GraphDatabase:
                     self._insert_attr_node(extraction["object"], m["id"], "object")
 
     def search_nodes(self, ids: list[str]) -> tuple[list[str], list[dict[str, str]]]:
-        result_ids = []
+        result_ids = set()
         result_chunks = []
         result_metadata = []
+        # For each chunk, lookup its relevant relations and add all directly connected chunks to these relations
         for id in ids:
             for attr_adj in list(self.graph.adj[id]):
                 for adj in list(self.graph.adj[attr_adj]):
                     if self.graph.nodes[adj]["type"] == "chunk" and adj not in result_ids:
-                        result_ids.append(adj)
+                        result_ids.add(adj)
                         result_chunks.append(self.graph.nodes[adj]["data"])
                         result_metadata.append(self.graph.nodes[adj]["metadata"])
         return result_chunks, result_metadata

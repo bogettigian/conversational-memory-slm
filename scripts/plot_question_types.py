@@ -54,7 +54,7 @@ def plot_question_types(counts: dict[str, int], output_path: str = None, title: 
     values = [item[1] for item in sorted_items]
 
     # Create figure with better styling
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(12, 7))
 
     # Color palette
     colors = plt.cm.viridis([i / len(types) for i in range(len(types))])
@@ -72,18 +72,18 @@ def plot_question_types(counts: dict[str, int], output_path: str = None, title: 
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=11,
+            fontsize=14,
             fontweight="bold",
         )
 
     # Styling
-    ax.set_xlabel("Question Type", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Number of Questions", fontsize=12, fontweight="bold")
-    ax.set_title(title, fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("Question Type", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Number of Questions", fontsize=14, fontweight="bold")
+    ax.set_title(title, fontsize=16, fontweight="bold", pad=15)
 
     # Rotate x-axis labels for better readability
-    plt.xticks(rotation=30, ha="right", fontsize=10)
-    plt.yticks(fontsize=10)
+    plt.xticks(rotation=25, ha="right", fontsize=14)
+    plt.yticks(fontsize=14)
 
     # Add grid for readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)
@@ -98,7 +98,7 @@ def plot_question_types(counts: dict[str, int], output_path: str = None, title: 
         transform=ax.transAxes,
         ha="right",
         va="top",
-        fontsize=11,
+        fontsize=14,
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
 
@@ -146,19 +146,19 @@ def plot_accuracy_by_type(stats: dict[str, dict], output_path: str = None, title
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=10,
+            fontsize=14,
             fontweight="bold",
         )
 
     # Styling
-    ax.set_xlabel("Question Type", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Accuracy", fontsize=12, fontweight="bold")
-    ax.set_title(title, fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("Question Type", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Accuracy", fontsize=14, fontweight="bold")
+    ax.set_title(title, fontsize=16, fontweight="bold", pad=15)
     ax.set_ylim(0, 1.15)  # Leave room for labels
 
     # Rotate x-axis labels for better readability
-    plt.xticks(rotation=30, ha="right", fontsize=10)
-    plt.yticks(fontsize=10)
+    plt.xticks(rotation=25, ha="right", fontsize=14)
+    plt.yticks(fontsize=14)
 
     # Format y-axis as percentage
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x:.0%}'))
@@ -178,7 +178,7 @@ def plot_accuracy_by_type(stats: dict[str, dict], output_path: str = None, title
         transform=ax.transAxes,
         ha="right",
         va="top",
-        fontsize=11,
+        fontsize=14,
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
 

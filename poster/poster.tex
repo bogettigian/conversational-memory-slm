@@ -152,15 +152,15 @@
 
 \headerbox{Introducción}{name=intro,column=0}
 {
-  La eficiencia de los modelos de \textit{LLM} ha impulsado su uso como asistentes conversacionales. Sin embargo, una de las limitaciones de las \textit{LLMs} es que tienen un límite de contexto. Por lo tanto, en los últimos años se han desarrollado sistemas de \textit{Retrieval-Augmented Generation} (RAG), que combinan recuperación y generación para enriquecer la entrada a la \textit{LLM} en base a una fuente de conocimiento.
+  La eficiencia de los modelos de \textit{LLM} ha impulsado su uso como \textbf{asistentes conversacionales}. Sin embargo, una de las limitaciones de las \textit{LLMs} es que tienen un límite de contexto. Por lo tanto, en los últimos años se han desarrollado sistemas de \textbf{\textit{Retrieval-Augmented Generation (RAG)}}[1], que combinan recuperación y generación para enriquecer la entrada a la \textit{LLM} en base a una fuente de conocimiento.
 
-  En este trabajo, presentamos un sistema de RAG para el dataset \textit{LongMemEval}[1], restringiendo los modelos de \textit{LLM} a no más de 4B parámetros, con el objetivo de posibilitar su ejecución local en dispositivos personales, preservando así privacidad, coste y latencia.
+  En este trabajo, presentamos un sistema de \textit{RAG} para el dataset \textit{LongMemEval}[2], \textbf{restringiendo los modelos de \textit{LLM} a no más de 4B parámetros}, con el objetivo de posibilitar su ejecución local en dispositivos personales, preservando así privacidad, coste y latencia.
 }
 
 
 \headerbox{Dataset}{name=dataset,column=0, below=intro}
 {
-Los conjuntos de datos utilizados en este trabajo fueron los de \textit{LongMemEval} y los de \textit{Investigathon}, siendo este último una variación acotada del primero. Estos datasets tienen como propósito evaluar la capacidad de los modelos para mantener y utilizar memoria a largo plazo en conversaciones multi-sesión. Tienen distintos tipos de preguntas que se pueden categorizar en los siguientes grupos:
+Los conjuntos de datos utilizados en este trabajo fueron los de \textit{LongMemEval} y los de \textit{Investigathon}, siendo este último una variación acotada del primero. Estos datasets tienen como propósito \textbf{evaluar la capacidad de los modelos para mantener y utilizar memoria a largo plazo en conversaciones multi-sesión}. Tienen distintas tipos de preguntas que se pueden categorizar en los siguientes grupos:
 
 \begin{center}
 \includegraphics[width=0.48\columnwidth]{images/question_types_longmemeval_short.png} 
@@ -174,18 +174,19 @@ Los conjuntos de datos utilizados en este trabajo fueron los de \textit{LongMemE
 La solución se organiza en dos etapas: una offline de indexación (\textit{RAG Save}) y otra online de recuperación y generación (\textit{RAG Retrieve + LLM Generation}).
 
   \begin{minipage}{0.42\columnwidth}
-    En la etapa offline el objetivo es construir una base de conocimiento para así poder realizar las búsquedas eficientemente en la fase \textit{online}. Esta base de conocimiento se prepara en base a un historial de sesiones \texttt{s\_h}.
+    En la \textbf{etapa offline} el objetivo es \textbf{construir una base de conocimiento} para así poder realizar las búsquedas eficientemente en la fase online. Esta base de conocimiento se prepara en base a un historial de sesiones \texttt{s\_h}.
 
-    Primero, a partir de un historial de sesiones, la \textit{SavePolicy} genera \textit{chunks} \texttt{[c]} y su \textit{metadata} \texttt{[m]}, se calculan los embeddings de cada chunk y se almacenan en una base de datos vectorial, en nuestro caso \texttt{FAISS}[2].
+    Primero, a partir de un historial de sesiones, la \textit{SavePolicy} genera \textit{chunks} \texttt{[c]} y su \textit{metadata} \texttt{[m]}, se calculan los embeddings de cada chunk y se almacenan en una \textbf{base de datos vectorial}, en nuestro caso \texttt{FAISS}[3].
 
-    En la etapa online el objetivo es dar una respuesta a una consulta utilizando el contexto previamente almacenado. 
+    En la \textbf{etapa online} el objetivo es dar una respuesta a una consulta utilizando el contexto previamente almacenado. 
     
   \end{minipage}
   \begin{minipage}{0.54\columnwidth}
     \includegraphics[width=\linewidth]{images/architecture.pdf}
   \end{minipage}
 
-Para esto, hay una fase en la que se obtiene la información necesaria y luego otra en la que se genera la respuesta. En la primera fase, dada una \textit{pregunta} \texttt{q}, se obtiene su embedding \texttt{e\_q}. Luego utilizando la pregunta original y el embedding de la misma se aplica una \textit{SearchPolicy} que va a ser la encargada de devolver los \textit{chunks} y las \textit{metadata} necesarios para responder a la pregunta. En la segunda fase, se genera un \textit{prompt} \texttt{p} con los datos obtenidos en la fase anterior, que se envía a la \textit{LLM}, obteniendo como resultado la respuesta final \texttt{r}.
+Para esto, hay una fase en la que se \textbf{obtiene la información necesaria} y luego otra en la que se \textbf{genera la respuesta}. En la primera fase, dada una \textit{pregunta} \texttt{q}, se obtiene su \textit{embedding} \texttt{e\_q}. Luego, utilizando la pregunta original y el embedding de la misma, se aplica una \textit{SearchPolicy} que va a ser la encargada de devolver los chunks y la metadata necesaria para responder a la pregunta. En la segunda fase, se genera un \textit{prompt} \texttt{p} con los datos obtenidos en la fase anterior, que se envía a la \textit{LLM}, obteniendo como resultado la \textit{respuesta final} \texttt{r}.
+\\
 }
 
 
@@ -194,15 +195,15 @@ Para esto, hay una fase en la que se obtiene la información necesaria y luego o
 {\small
 \begin{minipage}{0.46\columnwidth}
 \begin{enumerate}
+\item P. Lewis et al. {\it Retrieval-augmented generation for knowledge-intensive NLP tasks.} NeurIPS 2024
 \item D. Wu et al. {\it LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory.} ICLR 2024
 \item M. Douze et al. {\it The FAISS Library.} IEEE Trans. on Big Data
-\item Gemma Team, Google DeepMind. {\it Gemma 3 Technical Report.} arXiv
 \end{enumerate}
 \end{minipage}
 \begin{minipage}{0.46\columnwidth}
 \begin{enumerate}
 \setcounter{enumi}{3}
-\item P. Lewis et al. {\it Retrieval-augmented generation for knowledge-intensive NLP tasks.} NeurIPS 2024
+\item Gemma Team, Google DeepMind. {\it Gemma 3 Technical Report.} arXiv
 \item J. Chen et al. {\it BGE M3-Embedding: Multi-Lingual, Multi-Functionality, Multi-Granularity Text Embeddings Through Self-Knowledge Distillation.} arXiv
 \end{enumerate}
 \end{minipage}
@@ -212,7 +213,7 @@ Para esto, hay una fase en la que se obtiene la información necesaria y luego o
 
 \headerbox{Resultado 1}{name=res1,column=1}
 {
-En el primer experimento, creamos una \textit{SavePolicy} que define un \textit{chunk} por cada mensaje de cada sesión del historial de sesiones, y una \textit{SearchPolicy} que en base a la pregunta, genera el embedding de la misma y busca los 6 \textit{chunks} más similares a esta. Esta versión es la mas simple y es la que definimos como base.
+En el primer experimento, creamos una \textit{SavePolicy} que define un chunk por cada mensaje de cada sesión del historial de sesiones, y una \textit{SearchPolicy} que en base a la pregunta, genera el embedding de la misma y busca los 6 chunks más similares a esta. Esta versión es la más simple y es la que definimos como base.
 
 \begin{minipage}{0.42\columnwidth}
 {\small
@@ -238,7 +239,7 @@ context\_avg & 3253 \\
 
 \headerbox{Resultado 2}{name=res2,column=1,below=res1}
 {
-Utilizando las \textit{policies} anteriores como base, probamos dos nuevas estrategias de \textit{SearchPolicy}. La primera consiste en seleccionar más chunks en la fase de \textit{retrieve}, para luego realizar un \textit{re-ranking} con un modelo de embedding especializado en esta tarea. Además, realizamos otro experimento agregando \textit{time-pruning} para recortar sesiones fuera del rango de tiempo, pero no obtuvimos mejoras notables.
+Utilizando las \textit{policies} anteriores como base, probamos dos nuevas estrategias de \textit{SearchPolicy}. La primera consiste en seleccionar más chunks en la fase de \textit{retrieve}, para luego realizar un \textbf{\textit{re-ranking}} con un modelo de embedding especializado en esta tarea. Además, realizamos otro experimento agregando \textbf{\textit{time-pruning}} para recortar sesiones fuera del rango de tiempo, pero no obtuvimos mejoras notables.
 
 \begin{minipage}{0.42\columnwidth}
 {\small
@@ -284,7 +285,7 @@ context\_avg & 4885 \\
 
 \headerbox{Resultado 3}{name=res3,column=1,below=res2}
 {
-Finalmente, descubrimos que para cada pregunta, la respuesta suele estar exclusivamente en los mensajes del usuario, o exclusivamente en los mensajes del asistente. Por lo tanto, entrenamos un clasificador tal que, dentro de la \textit{SearchPolicy}, primero clasifica la pregunta en si es una que debe ser contestada con los mensajes del usuario o si debe ser contestada con los mensajes del asistente. En base a esta clasificación, recuperamos solo los \textit{chunks} del rol inferido a la hora de buscar en \texttt{FAISS}.
+Finalmente, descubrimos que para cada pregunta, la respuesta suele estar exclusivamente en los mensajes del usuario, o exclusivamente en los mensajes del asistente. Por lo tanto, entrenamos un \textbf{clasificador} tal que, dentro de la \textit{SearchPolicy}, primero clasifica la pregunta en si es una que debe ser contestada con los mensajes del usuario o si debe ser contestada con los mensajes del asistente. En base a esta clasificación, recuperamos solo los chunks del rol inferido a la hora de buscar en \texttt{FAISS}.
 
 \begin{minipage}{0.42\columnwidth}
 {\small
@@ -305,26 +306,12 @@ context\_avg & 2408 \\
 \begin{minipage}{0.54\columnwidth}
 \includegraphics[width=\linewidth]{images/accuracy_SEARCH_rerank_role_search_BAAI_bge-reranker-v2-m3_fine_tuning_classifier_6_0.3.png}
 \end{minipage}
-
-\begin{minipage}{0.42\columnwidth}
-{\small
-\begin{tabular}{l r}
-\hline
-\textbf{Métrica} & \textbf{Valor} \\
-\hline
-score & 0.66 \\
-online\_latency\_mean & 5.24 \\
-online\_latency\_var & 2.78 \\
-offline\_latency\_mean & 12.02 \\
-offline\_latency\_var & 0.25 \\
-context\_avg & 2408 \\
-\hline
-\end{tabular}
 }
-\end{minipage}
-\begin{minipage}{0.54\columnwidth}
-\includegraphics[width=\linewidth]{images/accuracy_SEARCH_rerank_role_search_BAAI_bge-reranker-v2-m3_user_role_classifier_6_0.3.png}
-\end{minipage}
+
+\headerbox{Conclusión}{name=conclusion,column=1,below=res3}
+{
+Los resultados demuestran que las estrategias de \textit{retrieval} propuestas incrementan significativamente la relevancia de los \textit{chunks}, lo que se traduce en una mejora sustancial en la \textbf{precisión} del sistema agéntico. Dichas optimizaciones mantienen un \textbf{coste computacional marginal} sin expandir notablemente el contexto de entrada del LLM, preservando así una \textbf{baja latencia} y una \textbf{alta eficiencia}.
+
 }
 
 \end{poster}
